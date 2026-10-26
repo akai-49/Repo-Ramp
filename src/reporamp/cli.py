@@ -67,6 +67,13 @@ def analyze(
             help="Directory where reports will be written.",
         ),
     ] = Path("reporamp-report"),
+    strict: Annotated[
+        bool,
+        typer.Option(
+            "--strict",
+            help="Exit with code 1 if any Python file cannot be parsed.",
+        ),
+    ] = False,
 ) -> None:
     """Analyze a repository and generate Markdown and JSON reports."""
     root = root.resolve()
@@ -80,21 +87,16 @@ def analyze(
     try:
         source_files = scan_repository(root)
         modules = []
-        parse_errors: list[tuple[Path, str]] = []
+        parse_errors: list[tuple[str, str]] = []
 
         for relative_path in source_files:
             try:
                 modules.append(parse_python_file(root / relative_path))
             except (SyntaxError, UnicodeError) as exc:
-                parse_errors.append((relative_path, str(exc)))
+                parse_errors.append((relative_path.as_posix(), str(exc)))
 
-        if parse_errors:
-            for relative_path, error in parse_errors:
-                typer.echo(
-                    f"Could not parse {relative_path}: {error}",
-                    err=True,
-                )
-            raise typer.Exit(code=1)
+        for relative_path, error in parse_errors:
+            typer.echo(f"Could not parse {relative_path}: {error}", err=True)
 
         graph = analyze_dependencies(modules, root)
         
@@ -109,6 +111,7 @@ def analyze(
             output,
             root=root,
             findings=findings,
+            parse_errors=parse_errors,
         )
 
     except (OSError, ValueError) as exc:
@@ -119,9 +122,17 @@ def analyze(
     typer.echo(f"Modules analyzed: {len(modules)}")
     typer.echo(f"Internal dependencies: {len(graph.edges)}")
     typer.echo(f"Unresolved imports: {len(graph.unresolved_imports)}")
+    typer.echo(f"Files with parse errors: {len(parse_errors)}")
     typer.echo("\nReports generated:")
     typer.echo(f"  {markdown_path}")
     typer.echo(f"  {json_path}")
+
+    if parse_errors:
+        typer.echo(f"\nAnalysis completed with {len(parse_errors)} parse error(s).")
+        if strict:
+            raise typer.Exit(code=1)
+        return
+
     typer.echo("\nAnalysis completed successfully.")
 
 

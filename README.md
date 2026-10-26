@@ -55,6 +55,12 @@ To choose an output location:
 reporamp analyze . --output reporamp-report
 ```
 
+Files that cannot be parsed (for example, syntax errors) are skipped, listed in the console, and recorded in a "Parse Errors" section of both reports. The run still exits with code 0; pass `--strict` to exit with code 1 when any file fails to parse:
+
+```bash
+reporamp analyze . --strict
+```
+
 See all supported options:
 
 ```bash
