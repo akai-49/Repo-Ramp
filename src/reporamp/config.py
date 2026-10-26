@@ -9,6 +9,15 @@ else:
     import tomli as tomllib
 
 REPORT_FORMATS = ("md", "json", "both")
+DEFAULTS: dict = {
+    "max_deps": 5,
+    "max_fan_in": 10,
+    "max_module_lines": 1000,
+    "max_function_lines": 100,
+    "exclude": [],
+    "fail_on": None,
+    "format": "both",
+}
 INTEGER_KEYS = ("max_deps", "max_fan_in", "max_module_lines", "max_function_lines")
 
 

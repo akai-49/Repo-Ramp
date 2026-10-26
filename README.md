@@ -149,6 +149,24 @@ reporamp analyze . --ai
 
 Only the structured analysis context is sent: repo-relative module paths, internal dependency edges, the unresolved-import count and dependency cycles. Source code is never sent. If `ANTHROPIC_API_KEY` is unset, the SDK is not installed, or the request fails, RepoRamp prints why and writes the built-in local summary instead. The run still succeeds.
 
+## MCP server (optional)
+
+`reporamp mcp` runs a [Model Context Protocol](https://modelcontextprotocol.io) server over stdio, so MCP clients (for example Claude Code or Claude Desktop) can query a repository's structure:
+
+```bash
+python -m pip install "reporamp[mcp]"
+claude mcp add reporamp -- reporamp mcp   # Claude Code
+```
+
+| Tool | Returns |
+| --- | --- |
+| `analyze_repo(path)` | The full JSON report |
+| `get_cycles(path)` | Dependency cycles as lists of module names |
+| `who_imports(path, module)` | Internal modules that import `module` (a dotted name such as `app.models`) |
+| `get_findings(path, rule_id?)` | Quality findings, optionally filtered by rule ID (or `cycles`) |
+
+Each call analyzes the repository at `path` with its `[tool.reporamp]` settings.
+
 ## Comparing reports
 
 `reporamp diff` compares two JSON reports, for example from `main` and from a pull request branch:
