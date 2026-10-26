@@ -280,8 +280,16 @@ def write_reports(
     root: Path | None = None,
     findings: list[Finding] | None = None,
     parse_errors: list[tuple[str, str]] | None = None,
-) -> tuple[Path, Path]:
-    """Write Markdown and JSON reports to an output directory."""
+    report_format: str = "both",
+) -> tuple[Path, ...]:
+    """Write reports to an output directory.
+
+    ``report_format`` is ``"md"``, ``"json"`` or ``"both"``. Returns the
+    written paths, Markdown first.
+    """
+    if report_format not in ("md", "json", "both"):
+        raise ValueError(f"Unknown report format: {report_format}")
+
     output_dir = Path(output_dir)
 
     if output_dir.exists() and not output_dir.is_dir():
@@ -289,16 +297,22 @@ def write_reports(
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    markdown_path = output_dir / "report.md"
-    json_path = output_dir / "report.json"
+    written: list[Path] = []
 
-    markdown_path.write_text(
-    render_markdown(modules, graph, root, findings, parse_errors),
-    encoding="utf-8",
-)
-    json_path.write_text(
-    render_json(modules, graph, root, findings, parse_errors),
-    encoding="utf-8",
-)
+    if report_format in ("md", "both"):
+        markdown_path = output_dir / "report.md"
+        markdown_path.write_text(
+            render_markdown(modules, graph, root, findings, parse_errors),
+            encoding="utf-8",
+        )
+        written.append(markdown_path)
 
-    return markdown_path, json_path
+    if report_format in ("json", "both"):
+        json_path = output_dir / "report.json"
+        json_path.write_text(
+            render_json(modules, graph, root, findings, parse_errors),
+            encoding="utf-8",
+        )
+        written.append(json_path)
+
+    return tuple(written)
