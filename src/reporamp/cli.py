@@ -17,6 +17,26 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 
+def print_banner() -> None:
+    """Display the RepoRamp CLI banner."""
+    banner = r"""
+ ____                 ____                      
+|  _ \ ___ _ __   ___|  _ \ __ _ _ __ ___  _ __
+| |_) / _ \ '_ \ / _ \ |_) / _` | '_ ` _ \| '_ \
+|  _ <  __/ |_) |  __/  _ < (_| | | | | | | |_) |
+|_| \_\___| .__/ \___|_| \_\__,_|_| |_| |_| .__/
+          |_|                              |_|
+"""
+    typer.secho(banner, fg=typer.colors.BRIGHT_CYAN, bold=True)
+    typer.secho(
+        "          PYTHON CODEBASE INTELLIGENCE",
+        fg=typer.colors.BRIGHT_WHITE,
+        bold=True,
+    )
+    typer.echo("  Scan • Understand • Improve")
+    typer.echo()
+
+
 
 @app.command()
 def version() -> None:
@@ -52,8 +72,10 @@ def analyze(
     root = root.resolve()
     output = output.resolve()
 
-    typer.echo("RepoRamp — Python Codebase Analyzer")
-    typer.echo(f"Scanning: {root}")
+    print_banner()
+    typer.secho("  Repository Analysis", fg=typer.colors.GREEN, bold=True)
+    typer.echo(f"  Scanning: {root}")
+    typer.echo()
 
     try:
         source_files = scan_repository(root)
