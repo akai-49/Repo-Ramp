@@ -123,6 +123,7 @@ An analysis report can include:
 - Standard-library and third-party imports
 - Unresolved imports
 - Dependency cycles
+- A Mermaid dependency graph (`flowchart`) of internal edges, with cycle edges highlighted in red. GitHub renders it inline. Large graphs are capped at the 60 most connected modules, and the report says when the graph is truncated.
 - Module imports, classes, and functions
 - Code-quality findings and suggestions
 
