@@ -1,5 +1,7 @@
 from pathlib import Path
+
 import pytest
+
 from reporamp.scanner import scan_repository
 
 

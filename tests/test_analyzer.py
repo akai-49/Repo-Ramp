@@ -94,7 +94,7 @@ def test_graph_output_is_deterministic(tmp_path: Path) -> None:
         for name in ("z_module.py", "app.py", "a_module.py")
     ]
 
-    graph = analyze_dependencies(modules,tmp_path)
+    graph = analyze_dependencies(modules, tmp_path)
 
     assert graph.modules == ("a_module", "app", "z_module")
     assert graph.edges == (
