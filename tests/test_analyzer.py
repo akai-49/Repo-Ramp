@@ -5,6 +5,7 @@ from reporamp.analyzer import (
     DependencyGraph,
     analyze_dependencies,
     classify_import,
+    coupling_metrics,
     find_dependency_cycles,
 )
 from reporamp.parser import parse_python_file
@@ -177,3 +178,29 @@ def test_relative_from_dot_import_submodules(tmp_path: Path) -> None:
         DependencyEdge("app.api", "app"),
         DependencyEdge("app.api", "app.models"),
     )
+
+
+def test_coupling_metrics() -> None:
+    graph = DependencyGraph(
+        modules=("a", "b", "c", "lonely"),
+        edges=(
+            DependencyEdge("a", "b"),
+            DependencyEdge("a", "c"),
+            DependencyEdge("b", "c"),
+        ),
+        unresolved_imports=(),
+    )
+
+    metrics = {item.module: item for item in coupling_metrics(graph)}
+
+    assert [item.module for item in coupling_metrics(graph)] == [
+        "a",
+        "b",
+        "c",
+        "lonely",
+    ]
+    assert (metrics["a"].fan_in, metrics["a"].fan_out) == (0, 2)
+    assert metrics["a"].instability == 1.0
+    assert metrics["b"].instability == 0.5
+    assert metrics["c"].instability == 0.0
+    assert metrics["lonely"].instability is None
