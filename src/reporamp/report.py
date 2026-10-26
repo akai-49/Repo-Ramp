@@ -105,6 +105,7 @@ def render_markdown(
     root: Path | None = None,
     findings: list[Finding] | None = None,
     parse_errors: list[tuple[str, str]] | None = None,
+    summary: str | None = None,
 ) -> str:
     """Render repository analysis as a Markdown document."""
     categories = _classify_unresolved_imports(graph)
@@ -123,6 +124,9 @@ def render_markdown(
         f"- Files with parse errors: {len(parse_errors or [])}",
         "",
     ]
+
+    if summary:
+        lines.extend(["## Architecture Summary", "", summary, ""])
 
     if parse_errors:
         lines.extend(["## Parse Errors", ""])
@@ -385,6 +389,7 @@ def write_reports(
     findings: list[Finding] | None = None,
     parse_errors: list[tuple[str, str]] | None = None,
     report_format: str = "both",
+    summary: str | None = None,
 ) -> tuple[Path, ...]:
     """Write reports to an output directory.
 
@@ -406,7 +411,7 @@ def write_reports(
     if report_format in ("md", "both"):
         markdown_path = output_dir / "report.md"
         markdown_path.write_text(
-            render_markdown(modules, graph, root, findings, parse_errors),
+            render_markdown(modules, graph, root, findings, parse_errors, summary),
             encoding="utf-8",
         )
         written.append(markdown_path)
