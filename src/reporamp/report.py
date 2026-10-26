@@ -29,6 +29,8 @@ def _classify_unresolved_imports(
 
     return categories
 
+# Bump when the JSON report structure changes; see README "JSON report schema".
+SCHEMA_VERSION = 2
 MAX_GRAPH_NODES = 60
 MAX_COUPLING_ROWS = 10
 
@@ -284,7 +286,7 @@ def render_json(
     categories = _classify_unresolved_imports(graph)
 
     payload = {
-        "schema_version": 1,
+        "schema_version": SCHEMA_VERSION,
         "summary": {
             "modules": len(modules),
             "internal_dependencies": len(graph.edges),

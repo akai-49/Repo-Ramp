@@ -137,6 +137,29 @@ An analysis report can include:
 - Module imports, classes, and functions
 - Code-quality findings and suggestions
 
+## Comparing reports
+
+`reporamp diff` compares two JSON reports, for example from `main` and from a pull request branch:
+
+```bash
+reporamp analyze . --format json -o base-report     # on main
+reporamp analyze . --format json -o head-report     # on your branch
+reporamp diff base-report/report.json head-report/report.json --fail-on-new
+```
+
+It prints added and removed modules and dependencies, plus new and resolved cycles and findings. Findings are matched by rule ID, module and message, so a finding whose message changes (for example a different dependency count) shows as one resolved and one new finding. With `--fail-on-new`, the command exits with code 2 if the head report has any new cycle or finding.
+
+## JSON report schema
+
+`report.json` has a top-level `schema_version`. It is bumped whenever the structure of the report changes, so tools can detect which fields to expect. `reporamp diff` accepts versions 1 and 2.
+
+| Version | Changes |
+| --- | --- |
+| `1` | `summary`, `quality_findings`, `modules`, `dependencies`, `standard_library_imports`, `third_party_imports`, `unresolved_imports`, `dependency_cycles` |
+| `2` | Adds `parse_errors` (list of `{path, error}`), `summary.parse_errors`, and `coupling` (list of `{module, fan_in, fan_out, instability}`) |
+
+All lists are sorted, so reports for the same code are byte-for-byte identical.
+
 ## Quality rules
 
 | Rule | What it checks |

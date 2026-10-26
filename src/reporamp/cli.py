@@ -8,6 +8,7 @@ import typer
 
 from reporamp.analyzer import _module_name, analyze_dependencies
 from reporamp.config import load_config, load_entry_points
+from reporamp.diff import diff_reports, has_new_problems, load_report, render_diff
 from reporamp.parser import parse_python_file
 from reporamp.quality import analyze_quality, parse_rule_selection, select_findings
 from reporamp.report import write_reports
@@ -265,6 +266,37 @@ def analyze(
                 f"  [{finding.rule_id}] {finding.module}: {finding.message}",
                 err=True,
             )
+        raise typer.Exit(code=2)
+
+
+@app.command("diff")
+def diff(
+    base: Annotated[
+        Path,
+        typer.Argument(help="Baseline report.json.", exists=True, dir_okay=False),
+    ],
+    head: Annotated[
+        Path,
+        typer.Argument(help="New report.json to compare.", exists=True, dir_okay=False),
+    ],
+    fail_on_new: Annotated[
+        bool,
+        typer.Option(
+            "--fail-on-new",
+            help="Exit with code 2 if HEAD has new cycles or findings.",
+        ),
+    ] = False,
+) -> None:
+    """Compare two JSON reports: modules, dependencies, cycles and findings."""
+    try:
+        changes = diff_reports(load_report(base), load_report(head))
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(render_diff(changes))
+
+    if fail_on_new and has_new_problems(changes):
         raise typer.Exit(code=2)
 
 if __name__ == "__main__":
