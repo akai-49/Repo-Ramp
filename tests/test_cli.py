@@ -73,3 +73,66 @@ def test_analyze_strict_fails_on_invalid_python(tmp_path: Path) -> None:
     assert result.exit_code == 1
     assert "Could not parse broken.py" in result.output
     assert (tmp_path / "out" / "report.json").is_file()
+
+
+def _write_hub(root: Path, dependency_count: int) -> None:
+    names = [f"m{index}" for index in range(dependency_count)]
+    for name in names:
+        (root / f"{name}.py").write_text("x = 1\n", encoding="utf-8")
+    (root / "hub.py").write_text(
+        "".join(f"import {name}\n" for name in names),
+        encoding="utf-8",
+    )
+
+
+def test_analyze_max_deps_controls_qr002(tmp_path: Path) -> None:
+    _write_hub(tmp_path, 3)
+    output_dir = tmp_path / "reports"
+
+    default = runner.invoke(app, ["analyze", str(tmp_path), "-o", str(output_dir)])
+    payload = json.loads((output_dir / "report.json").read_text(encoding="utf-8"))
+    assert default.exit_code == 0, default.output
+    assert payload["quality_findings"] == []
+
+    strict = runner.invoke(
+        app,
+        ["analyze", str(tmp_path), "-o", str(output_dir), "--max-deps", "2"],
+    )
+    payload = json.loads((output_dir / "report.json").read_text(encoding="utf-8"))
+    assert strict.exit_code == 0, strict.output
+    assert [item["rule_id"] for item in payload["quality_findings"]] == ["QR002"]
+
+
+def test_analyze_exclude_and_format(tmp_path: Path) -> None:
+    (tmp_path / "app.py").write_text("x = 1\n", encoding="utf-8")
+    (tmp_path / "legacy").mkdir()
+    (tmp_path / "legacy" / "old.py").write_text("def broken(:\n", encoding="utf-8")
+    output_dir = tmp_path / "reports"
+
+    result = runner.invoke(
+        app,
+        [
+            "analyze",
+            str(tmp_path),
+            "-o",
+            str(output_dir),
+            "--exclude",
+            "legacy",
+            "--exclude",
+            "nothing*",
+            "--format",
+            "json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert not (output_dir / "report.md").exists()
+    payload = json.loads((output_dir / "report.json").read_text(encoding="utf-8"))
+    assert payload["summary"]["modules"] == 1
+    assert payload["summary"]["parse_errors"] == 0
+
+
+def test_analyze_rejects_unknown_format(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["analyze", str(tmp_path), "--format", "html"])
+
+    assert result.exit_code != 0
