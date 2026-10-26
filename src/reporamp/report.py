@@ -2,13 +2,15 @@
 
 import json
 from pathlib import Path
-from reporamp.parser import ModuleInfo
+
 from reporamp.analyzer import (
     DependencyGraph,
     classify_import,
     find_dependency_cycles,
 )
+from reporamp.parser import ModuleInfo
 from reporamp.quality import Finding
+
 
 def _classify_unresolved_imports(
     graph: DependencyGraph,
