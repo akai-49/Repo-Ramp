@@ -1,8 +1,10 @@
-from dataclasses import dataclass
 import ast
+from dataclasses import dataclass
 from pathlib import Path
-from reporamp.analyzer import DependencyGraph
+
 from reporamp.analyzer import DependencyGraph, find_dependency_cycles
+
+
 @dataclass(frozen=True)
 class Finding:
     rule_id: str

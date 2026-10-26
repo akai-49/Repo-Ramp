@@ -4,9 +4,8 @@ from reporamp.analyzer import (
     DependencyEdge,
     DependencyGraph,
     analyze_dependencies,
+    classify_import,
     find_dependency_cycles,
-    classify_import
-
 )
 from reporamp.parser import parse_python_file
 
