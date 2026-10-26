@@ -145,6 +145,36 @@ def analyze_dependencies(
     )
 
 
+@dataclass(frozen=True)
+class ModuleCoupling:
+    """Afferent (fan-in) and efferent (fan-out) coupling for one module."""
+
+    module: str
+    fan_in: int
+    fan_out: int
+
+    @property
+    def instability(self) -> float | None:
+        """Return Ce / (Ca + Ce), or None for a module with no internal edges."""
+        total = self.fan_in + self.fan_out
+        return round(self.fan_out / total, 3) if total else None
+
+
+def coupling_metrics(graph: DependencyGraph) -> tuple[ModuleCoupling, ...]:
+    """Return coupling metrics for every module, sorted by module name."""
+    fan_in = {module: 0 for module in graph.modules}
+    fan_out = {module: 0 for module in graph.modules}
+
+    for edge in set(graph.edges):
+        fan_out[edge.source] += 1
+        fan_in[edge.target] += 1
+
+    return tuple(
+        ModuleCoupling(module, fan_in[module], fan_out[module])
+        for module in graph.modules
+    )
+
+
 def find_dependency_cycles(
     graph: DependencyGraph,
 ) -> tuple[tuple[str, ...], ...]:
