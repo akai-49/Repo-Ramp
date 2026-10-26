@@ -7,6 +7,7 @@ from typing import Annotated
 import typer
 
 from reporamp.analyzer import _module_name, analyze_dependencies
+from reporamp.config import load_config
 from reporamp.parser import parse_python_file
 from reporamp.quality import analyze_quality, parse_rule_selection, select_findings
 from reporamp.report import write_reports
@@ -84,13 +85,17 @@ def analyze(
         ),
     ] = False,
     max_deps: Annotated[
-        int,
+        int | None,
         typer.Option(
             "--max-deps",
             min=0,
-            help="QR002 threshold: flag modules with more internal dependencies.",
+            help=(
+                "QR002 threshold: flag modules with more internal dependencies. "
+                "Default: 5."
+            ),
+            show_default=False,
         ),
-    ] = 5,
+    ] = None,
     exclude: Annotated[
         list[str] | None,
         typer.Option(
@@ -102,9 +107,13 @@ def analyze(
         ),
     ] = None,
     report_format: Annotated[
-        ReportFormat,
-        typer.Option("--format", help="Which reports to write."),
-    ] = ReportFormat.both,
+        ReportFormat | None,
+        typer.Option(
+            "--format",
+            help="Which reports to write. Default: both.",
+            show_default=False,
+        ),
+    ] = None,
     fail_on: Annotated[
         str | None,
         typer.Option(
@@ -116,13 +125,33 @@ def analyze(
         ),
     ] = None,
 ) -> None:
-    """Analyze a repository and generate Markdown and JSON reports."""
+    """Analyze a repository and generate Markdown and JSON reports.
+
+    Settings from [tool.reporamp] in the repository's pyproject.toml are used
+    as defaults; command-line flags override them.
+    """
+    root = root.resolve()
+
+    try:
+        config = load_config(root)
+    except ValueError as exc:
+        typer.echo(f"Error: invalid pyproject.toml: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    if max_deps is None:
+        max_deps = config.get("max_deps", 5)
+    if exclude is None:
+        exclude = config.get("exclude", [])
+    if fail_on is None:
+        fail_on = config.get("fail_on")
+    if report_format is None:
+        report_format = ReportFormat(config.get("format", "both"))
+
     try:
         fail_rules = parse_rule_selection(fail_on)
     except ValueError as exc:
         raise typer.BadParameter(str(exc), param_hint="--fail-on") from exc
 
-    root = root.resolve()
     output = output.resolve()
 
     print_banner()
@@ -131,7 +160,7 @@ def analyze(
     typer.echo()
 
     try:
-        source_files = scan_repository(root, exclude=exclude or ())
+        source_files = scan_repository(root, exclude=exclude)
         modules = []
         parse_errors: list[tuple[str, str]] = []
 
