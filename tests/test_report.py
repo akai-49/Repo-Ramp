@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from reporamp.analyzer import DependencyGraph, analyze_dependencies
+from reporamp.analyzer import DependencyEdge, DependencyGraph, analyze_dependencies
 from reporamp.parser import parse_python_file
 from reporamp.report import render_json, render_markdown, write_reports
 
@@ -114,3 +114,46 @@ def test_write_reports_markdown_only(tmp_path: Path) -> None:
 
     assert [path.name for path in paths] == ["report.md"]
     assert not (tmp_path / "out" / "report.json").exists()
+
+
+def test_markdown_includes_mermaid_graph_with_cycle_edges() -> None:
+    graph = DependencyGraph(
+        modules=("a", "b", "c"),
+        edges=(
+            DependencyEdge("a", "b"),
+            DependencyEdge("b", "a"),
+            DependencyEdge("b", "c"),
+        ),
+        unresolved_imports=(),
+    )
+
+    report = render_markdown([], graph)
+
+    block = report.split("## Dependency Graph", 1)[1].split("```", 2)[1]
+    assert block.splitlines() == [
+        "mermaid",
+        "flowchart LR",
+        '    n0["a"]',
+        '    n1["b"]',
+        '    n2["c"]',
+        "    n0 --> n1",
+        "    n1 --> n0",
+        "    n1 --> n2",
+        "    linkStyle 0,1 stroke:#d62728,stroke-width:2px",
+    ]
+    assert "truncated" not in report
+
+
+def test_mermaid_graph_is_truncated_to_most_connected_nodes() -> None:
+    leaves = [f"leaf{index:02d}" for index in range(70)]
+    graph = DependencyGraph(
+        modules=("hub", *leaves),
+        edges=tuple(DependencyEdge("hub", leaf) for leaf in leaves),
+        unresolved_imports=(),
+    )
+
+    report = render_markdown([], graph)
+
+    assert "showing 60 of 71 connected modules" in report
+    assert '["hub"]' in report
+    assert report.count(" --> ") == 59
