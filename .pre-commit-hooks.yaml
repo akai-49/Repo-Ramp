@@ -1,0 +1,8 @@
+- id: reporamp
+  name: reporamp
+  description: Analyze the repository and fail on selected RepoRamp findings.
+  entry: reporamp analyze . --output .reporamp-report
+  language: python
+  pass_filenames: false
+  types: [python]
+  args: ["--fail-on", "QR003"]
