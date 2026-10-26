@@ -113,6 +113,11 @@ Run the tests:
 pytest
 ```
 
+## Continuous integration and releases
+
+- `.github/workflows/ci.yml` runs `ruff check .` and `pytest` on Python 3.10–3.13 for every push to `main` and every pull request.
+- `.github/workflows/release.yml` builds the package and publishes it to PyPI with [trusted publishing](https://docs.pypi.org/trusted-publishers/) when a `v*` tag is pushed (for example `v0.2.0`). It requires a `pypi` environment in the repository settings and a matching trusted publisher on PyPI.
+
 ## Current scope
 
 RepoRamp currently focuses on static structural analysis of Python projects. AI-powered analysis is not part of the current release.
