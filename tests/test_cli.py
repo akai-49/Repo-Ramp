@@ -136,3 +136,40 @@ def test_analyze_rejects_unknown_format(tmp_path: Path) -> None:
     result = runner.invoke(app, ["analyze", str(tmp_path), "--format", "html"])
 
     assert result.exit_code != 0
+
+
+def _write_cycle(root: Path) -> None:
+    (root / "a.py").write_text("import b\n", encoding="utf-8")
+    (root / "b.py").write_text("import a\n", encoding="utf-8")
+
+
+def test_fail_on_exits_2_for_matching_findings(tmp_path: Path) -> None:
+    _write_cycle(tmp_path)
+    output_dir = tmp_path / "reports"
+
+    result = runner.invoke(
+        app,
+        ["analyze", str(tmp_path), "-o", str(output_dir), "--fail-on", "cycles"],
+    )
+
+    assert result.exit_code == 2, result.output
+    assert "[QR003]" in result.output
+    assert (output_dir / "report.json").is_file()
+
+
+def test_fail_on_passes_without_matching_findings(tmp_path: Path) -> None:
+    _write_cycle(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["analyze", str(tmp_path), "-o", str(tmp_path / "r"), "--fail-on", "QR002"],
+    )
+
+    assert result.exit_code == 0, result.output
+
+
+def test_fail_on_rejects_unknown_rule(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["analyze", str(tmp_path), "--fail-on", "QR9"])
+
+    assert result.exit_code == 2
+    assert "Unknown rule" in result.output

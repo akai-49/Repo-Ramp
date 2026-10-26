@@ -4,6 +4,11 @@ from pathlib import Path
 
 from reporamp.analyzer import DependencyGraph, find_dependency_cycles
 
+RULE_IDS = ("QR001", "QR002", "QR003")
+
+# `--fail-on` aliases for rule IDs.
+RULE_ALIASES = {"cycles": "QR003"}
+
 
 @dataclass(frozen=True)
 class Finding:
@@ -133,3 +138,28 @@ def analyze_quality(
     findings.extend(find_cycle_findings(graph))
 
     return findings
+
+
+def parse_rule_selection(value: str | None) -> frozenset[str]:
+    """Parse a comma-separated list of rule IDs or aliases such as ``cycles``."""
+    selected = set()
+
+    for item in (value or "").split(","):
+        item = item.strip()
+        if not item:
+            continue
+        rule_id = RULE_ALIASES.get(item.lower(), item.upper())
+        if rule_id not in RULE_IDS:
+            known = ", ".join((*RULE_IDS, *RULE_ALIASES))
+            raise ValueError(f"Unknown rule {item!r}; expected one of: {known}")
+        selected.add(rule_id)
+
+    return frozenset(selected)
+
+
+def select_findings(
+    findings: list[Finding],
+    rule_ids: frozenset[str],
+) -> list[Finding]:
+    """Return the findings whose rule ID is in ``rule_ids``."""
+    return [finding for finding in findings if finding.rule_id in rule_ids]
