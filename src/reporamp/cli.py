@@ -7,7 +7,7 @@ from typing import Annotated
 import typer
 
 from reporamp.analyzer import _module_name, analyze_dependencies
-from reporamp.config import load_config
+from reporamp.config import load_config, load_entry_points
 from reporamp.parser import parse_python_file
 from reporamp.quality import analyze_quality, parse_rule_selection, select_findings
 from reporamp.report import write_reports
@@ -96,6 +96,33 @@ def analyze(
             show_default=False,
         ),
     ] = None,
+    max_fan_in: Annotated[
+        int | None,
+        typer.Option(
+            "--max-fan-in",
+            min=0,
+            help="QR004 threshold: flag modules imported by more modules. Default: 10.",
+            show_default=False,
+        ),
+    ] = None,
+    max_module_lines: Annotated[
+        int | None,
+        typer.Option(
+            "--max-module-lines",
+            min=0,
+            help="QR006 threshold: flag modules with more lines. Default: 1000.",
+            show_default=False,
+        ),
+    ] = None,
+    max_function_lines: Annotated[
+        int | None,
+        typer.Option(
+            "--max-function-lines",
+            min=0,
+            help="QR006 threshold: flag functions with more lines. Default: 100.",
+            show_default=False,
+        ),
+    ] = None,
     exclude: Annotated[
         list[str] | None,
         typer.Option(
@@ -134,12 +161,19 @@ def analyze(
 
     try:
         config = load_config(root)
+        entry_points = load_entry_points(root)
     except ValueError as exc:
         typer.echo(f"Error: invalid pyproject.toml: {exc}", err=True)
         raise typer.Exit(code=1) from exc
 
     if max_deps is None:
         max_deps = config.get("max_deps", 5)
+    if max_fan_in is None:
+        max_fan_in = config.get("max_fan_in", 10)
+    if max_module_lines is None:
+        max_module_lines = config.get("max_module_lines", 1000)
+    if max_function_lines is None:
+        max_function_lines = config.get("max_function_lines", 100)
     if exclude is None:
         exclude = config.get("exclude", [])
     if fail_on is None:
@@ -183,6 +217,10 @@ def analyze(
             module_paths,
             graph,
             dependency_threshold=max_deps,
+            fan_in_threshold=max_fan_in,
+            max_module_lines=max_module_lines,
+            max_function_lines=max_function_lines,
+            entry_points=entry_points,
         )
         report_paths = write_reports(
             modules,

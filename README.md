@@ -29,6 +29,9 @@ RepoRamp is a command-line tool that helps developers understand the structure o
   - `QR001`: empty modules (empty `__init__.py` package markers are ignored)
   - `QR002`: modules with many internal dependencies
   - `QR003`: dependency cycles
+  - `QR004`: high fan-in "god modules"
+  - `QR005`: orphan modules that nothing imports
+  - `QR006`: oversized modules or functions
 - **Markdown and JSON reports** — keep a human-readable architecture overview and machine-readable analysis output.
 - **Command-line interface** — run the analyzer from the project you want to inspect.
 
@@ -68,6 +71,9 @@ reporamp analyze . --strict
 | `--output`, `-o` | `reporamp-report` | Directory where reports are written. |
 | `--format md\|json\|both` | `both` | Which reports to write. |
 | `--max-deps INT` | `5` | `QR002` threshold: flag modules with more internal dependencies than this. |
+| `--max-fan-in INT` | `10` | `QR004` threshold: flag modules imported by more internal modules than this. |
+| `--max-module-lines INT` | `1000` | `QR006` threshold for module length. |
+| `--max-function-lines INT` | `100` | `QR006` threshold for function length. |
 | `--exclude PATTERN` | — | Glob for files or directories to skip, matched against names and root-relative paths. Repeatable; added to the built-in exclusions (`.venv`, `build`, `__pycache__`, …). |
 | `--strict` | off | Exit with code 1 if any file fails to parse. |
 | `--fail-on RULES` | — | Comma-separated rule IDs, or `cycles` for `QR003`. Exit with code 2 if any matching finding exists. |
@@ -83,6 +89,9 @@ RepoRamp reads `[tool.reporamp]` from the analyzed repository's `pyproject.toml`
 ```toml
 [tool.reporamp]
 max_deps = 8
+max_fan_in = 10
+max_module_lines = 1000
+max_function_lines = 100
 exclude = ["tests", "migrations/*"]
 fail_on = ["QR003", "QR002"]   # or "QR003,QR002"
 format = "both"                # md, json or both
@@ -167,6 +176,9 @@ An analysis report can include:
 | `QR001` | Empty Python modules (empty `__init__.py` files are ignored) |
 | `QR002` | Modules with more outgoing internal dependencies than the configured threshold |
 | `QR003` | Circular dependencies in the module graph |
+| `QR004` | "God modules" imported by more internal modules than `--max-fan-in` (default 10) |
+| `QR005` | Orphan modules (severity `info`) that no other module imports. Packages, `__main__`, `conftest`, `setup`, `test_*`/`*_test` modules and `[project.scripts]`/`gui-scripts` targets count as entry points and are skipped |
+| `QR006` | Modules longer than `--max-module-lines` (default 1000) or functions longer than `--max-function-lines` (default 100) |
 
 These checks are structural signals to help guide code review; they do not replace tests, linting, or human judgment.
 

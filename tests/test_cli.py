@@ -92,7 +92,7 @@ def test_analyze_max_deps_controls_qr002(tmp_path: Path) -> None:
     default = runner.invoke(app, ["analyze", str(tmp_path), "-o", str(output_dir)])
     payload = json.loads((output_dir / "report.json").read_text(encoding="utf-8"))
     assert default.exit_code == 0, default.output
-    assert payload["quality_findings"] == []
+    assert "QR002" not in {item["rule_id"] for item in payload["quality_findings"]}
 
     strict = runner.invoke(
         app,
@@ -100,7 +100,7 @@ def test_analyze_max_deps_controls_qr002(tmp_path: Path) -> None:
     )
     payload = json.loads((output_dir / "report.json").read_text(encoding="utf-8"))
     assert strict.exit_code == 0, strict.output
-    assert [item["rule_id"] for item in payload["quality_findings"]] == ["QR002"]
+    assert "QR002" in {item["rule_id"] for item in payload["quality_findings"]}
 
 
 def test_analyze_exclude_and_format(tmp_path: Path) -> None:
@@ -173,3 +173,27 @@ def test_fail_on_rejects_unknown_rule(tmp_path: Path) -> None:
 
     assert result.exit_code == 2
     assert "Unknown rule" in result.output
+
+
+def test_new_rule_thresholds_and_console_scripts(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        "[project]\nname = 'demo'\n\n[project.scripts]\ndemo = 'tool:main'\n"
+        "\n[tool.reporamp]\nmax_function_lines = 1\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "tool.py").write_text(
+        "import core\n\ndef main():\n    return core\n", encoding="utf-8"
+    )
+    (tmp_path / "core.py").write_text("x = 1\n", encoding="utf-8")
+    (tmp_path / "unused.py").write_text("x = 1\n", encoding="utf-8")
+    output_dir = tmp_path / "reports"
+
+    result = runner.invoke(
+        app,
+        ["analyze", str(tmp_path), "-o", str(output_dir), "--max-fan-in", "0"],
+    )
+
+    assert result.exit_code == 0, result.output
+    payload = json.loads((output_dir / "report.json").read_text(encoding="utf-8"))
+    found = {(item["rule_id"], item["module"]) for item in payload["quality_findings"]}
+    assert found == {("QR004", "core"), ("QR005", "unused"), ("QR006", "tool")}
