@@ -2,6 +2,8 @@
 """Discover Python source files in a repository."""
 
 import os
+from collections.abc import Iterable
+from fnmatch import fnmatch
 from pathlib import Path
 
 EXCLUDED_DIRECTORIES = frozenset(
@@ -24,12 +26,23 @@ EXCLUDED_DIRECTORIES = frozenset(
 )
 
 
-def scan_repository(root: Path) -> list[Path]:
+def _is_excluded(relative_path: Path, patterns: Iterable[str]) -> bool:
+    """Match a glob against the file or directory name or its relative path."""
+    return any(
+        fnmatch(relative_path.name, pattern)
+        or fnmatch(relative_path.as_posix(), pattern)
+        for pattern in patterns
+    )
+
+
+def scan_repository(root: Path, exclude: Iterable[str] = ()) -> list[Path]:
     """Return sorted Python file paths relative to the repository root.
 
     Directory symlinks are not followed. Generated and environment
-    directories are excluded by name.
+    directories are excluded by name. Extra ``exclude`` glob patterns are
+    matched against each file or directory name and its root-relative path.
     """
+    exclude = tuple(exclude)
     root = Path(root).expanduser()
 
     if not root.exists():
@@ -53,11 +66,13 @@ def scan_repository(root: Path) -> list[Path]:
             for name in directory_names
             if name not in EXCLUDED_DIRECTORIES
             and not (current_path / name).is_symlink()
+            and not _is_excluded((current_path / name).relative_to(root), exclude)
         )
 
         for filename in filenames:
             if filename.endswith(".py"):
-                full_path = current_path / filename
-                python_files.append(full_path.relative_to(root))
+                relative_path = (current_path / filename).relative_to(root)
+                if not _is_excluded(relative_path, exclude):
+                    python_files.append(relative_path)
 
     return sorted(python_files, key=lambda path: path.as_posix())
