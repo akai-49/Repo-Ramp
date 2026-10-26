@@ -198,3 +198,14 @@ def test_analyze_quality_combines_findings(tmp_path: Path):
     rule_ids = {finding.rule_id for finding in findings}
 
     assert rule_ids == {"QR001", "QR002", "QR003"}
+
+
+def test_does_not_flag_empty_package_init(tmp_path: Path):
+    init_path = tmp_path / "__init__.py"
+    init_path.write_text("", encoding="utf-8")
+    empty_path = tmp_path / "empty.py"
+    empty_path.write_text("", encoding="utf-8")
+
+    findings = find_empty_modules({"pkg": init_path, "pkg.empty": empty_path})
+
+    assert [finding.module for finding in findings] == ["pkg.empty"]

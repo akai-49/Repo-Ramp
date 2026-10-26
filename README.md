@@ -26,7 +26,7 @@ RepoRamp is a command-line tool that helps developers understand the structure o
 - **Import and dependency analysis** — identifies relationships between modules in a project.
 - **Circular dependency detection** — reports dependency cycles in the internal module graph.
 - **Code-quality checks** — reports selected structural issues:
-  - `QR001`: empty modules
+  - `QR001`: empty modules (empty `__init__.py` package markers are ignored)
   - `QR002`: modules with many internal dependencies
   - `QR003`: dependency cycles
 - **Markdown and JSON reports** — keep a human-readable architecture overview and machine-readable analysis output.
@@ -85,7 +85,7 @@ An analysis report can include:
 
 | Rule | What it checks |
 | --- | --- |
-| `QR001` | Empty Python modules |
+| `QR001` | Empty Python modules (empty `__init__.py` files are ignored) |
 | `QR002` | Modules with more outgoing internal dependencies than the configured threshold |
 | `QR003` | Circular dependencies in the module graph |
 
