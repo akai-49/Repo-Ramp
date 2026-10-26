@@ -100,6 +100,39 @@ reporamp analyze . --fail-on QR003,QR002   # or: --fail-on cycles
 
 Exit codes: `0` success, `1` error (or a parse error with `--strict`), `2` a `--fail-on` rule matched.
 
+#### GitHub Action
+
+```yaml
+# .github/workflows/reporamp.yml
+name: RepoRamp
+on: [pull_request]
+jobs:
+  reporamp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: launchforgedev/Repo-Ramp@main   # pin to a release tag once available
+        with:
+          fail-on: QR003,QR002      # "" disables gating
+          args: --max-deps 8        # optional extra analyze flags
+```
+
+Inputs: `path` (default `.`), `fail-on` (default `QR003`), `output` (default `reporamp-report`), `args`, `python-version` (default `3.12`). Settings in `[tool.reporamp]` still apply.
+
+#### pre-commit
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/launchforgedev/Repo-Ramp
+    rev: main   # pin to a release tag once available
+    hooks:
+      - id: reporamp
+        args: ["--fail-on", "QR003,QR002"]   # default: --fail-on QR003
+```
+
+The hook analyzes the whole repository whenever Python files change, and writes reports to `.reporamp-report/`. Add that directory to `.gitignore`.
+
 See all supported options:
 
 ```bash
