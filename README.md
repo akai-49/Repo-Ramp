@@ -35,6 +35,27 @@ RepoRamp is a command-line tool that helps developers understand the structure o
 - **Markdown and JSON reports** — keep a human-readable architecture overview and machine-readable analysis output.
 - **Command-line interface** — run the analyzer from the project you want to inspect.
 
+## How it works
+
+```mermaid
+flowchart LR
+    repo["Python repository"] --> scan["Scan<br/>find .py files,<br/>apply excludes"]
+    cfg["pyproject.toml<br/>[tool.reporamp]"] -.-> scan
+    scan --> parse["Parse with ast<br/>imports, classes,<br/>functions"]
+    parse -->|syntax error| errors["Parse errors<br/>(skipped, reported)"]
+    parse --> graph["Dependency graph<br/>internal imports"]
+    graph --> cycles["Cycle detection"]
+    graph --> rules["Quality rules<br/>QR001–QR006"]
+    graph --> coupling["Coupling metrics<br/>Ca, Ce, I"]
+    cycles & rules & coupling & errors --> reports["report.md<br/>report.json"]
+    reports --> gate["--fail-on<br/>exit code 2"]
+    reports --> diff["reporamp diff<br/>base vs head"]
+    graph -.-> ai["--ai<br/>Claude summary"]
+    graph -.-> mcp["reporamp mcp<br/>MCP tools"]
+```
+
+Source code is parsed, never executed. Dashed arrows are optional.
+
 ## Installation
 
 Requires Python 3.10 or newer.
@@ -169,6 +190,61 @@ An analysis report can include:
 - Coupling metrics per module: fan-in (Ca), fan-out (Ce) and instability I = Ce / (Ca + Ce). The JSON report lists every module under `coupling` (`instability` is `null` for modules with no internal edges); the Markdown report shows a "Most Coupled Modules" table of the top 10 by Ca + Ce.
 - Module imports, classes, and functions
 - Code-quality findings and suggestions
+
+### Example: RepoRamp analyzing itself
+
+Output of `reporamp analyze . --exclude tests`. The Markdown report embeds the dependency graph as a Mermaid diagram, which GitHub renders inline; edges that form a cycle are drawn in red (RepoRamp has none):
+
+```mermaid
+flowchart LR
+    n0["reporamp"]
+    n1["reporamp.ai"]
+    n2["reporamp.analyzer"]
+    n3["reporamp.cli"]
+    n4["reporamp.config"]
+    n5["reporamp.diff"]
+    n6["reporamp.mcp_server"]
+    n7["reporamp.parser"]
+    n8["reporamp.pipeline"]
+    n9["reporamp.quality"]
+    n10["reporamp.report"]
+    n11["reporamp.scanner"]
+    n1 --> n2
+    n1 --> n7
+    n2 --> n7
+    n3 --> n0
+    n3 --> n1
+    n3 --> n4
+    n3 --> n5
+    n3 --> n6
+    n3 --> n8
+    n3 --> n9
+    n3 --> n10
+    n6 --> n2
+    n6 --> n8
+    n6 --> n9
+    n6 --> n10
+    n8 --> n2
+    n8 --> n4
+    n8 --> n7
+    n8 --> n9
+    n8 --> n11
+    n9 --> n2
+    n10 --> n2
+    n10 --> n7
+    n10 --> n9
+```
+
+The "Most Coupled Modules" table from the same report (top rows):
+
+| Module | Fan-in (Ca) | Fan-out (Ce) | Instability (I) |
+| --- | ---: | ---: | ---: |
+| `reporamp.cli` | 0 | 8 | 1.00 |
+| `reporamp.pipeline` | 2 | 5 | 0.71 |
+| `reporamp.analyzer` | 5 | 1 | 0.17 |
+| `reporamp.mcp_server` | 1 | 4 | 0.80 |
+| `reporamp.quality` | 4 | 1 | 0.20 |
+| `reporamp.report` | 2 | 3 | 0.60 |
 
 ## AI architecture summary (optional)
 
