@@ -78,6 +78,7 @@ def analyze(
             modules,
             graph,
             output,
+            root=root,
         )
 
     except (OSError, ValueError) as exc:

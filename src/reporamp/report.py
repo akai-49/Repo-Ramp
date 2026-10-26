@@ -2,16 +2,47 @@
 
 import json
 from pathlib import Path
-
-from reporamp.analyzer import DependencyGraph, find_dependency_cycles
 from reporamp.parser import ModuleInfo
+from reporamp.analyzer import (
+    DependencyGraph,
+    classify_import,
+    find_dependency_cycles,
+)
 
+def _classify_unresolved_imports(
+    graph: DependencyGraph,
+) -> dict[str, list[tuple[str, str]]]:
+    """Group non-internal imports by their detected category."""
+    categories: dict[str, list[tuple[str, str]]] = {
+        "standard_library": [],
+        "third_party": [],
+        "unresolved": [],
+    }
+
+    for source, imported in graph.unresolved_imports:
+        category = classify_import(imported)
+        categories[category].append((source, imported))
+
+    return categories
+
+def _display_path(path: Path, root: Path | None = None) -> str:
+    """Return a repository-relative path when the root is provided."""
+    if root is not None:
+        try:
+            return path.resolve().relative_to(root.resolve()).as_posix()
+        except ValueError:
+            pass
+
+    return path.as_posix()
 
 def render_markdown(
     modules: list[ModuleInfo],
     graph: DependencyGraph,
+    root: Path | None = None,
 ) -> str:
     """Render repository analysis as a Markdown document."""
+    categories = _classify_unresolved_imports(graph)
+
     lines = [
         "# RepoRamp Architecture Report",
         "",
@@ -19,7 +50,9 @@ def render_markdown(
         "",
         f"- Python modules analyzed: {len(modules)}",
         f"- Internal dependencies: {len(graph.edges)}",
-        f"- Unresolved imports: {len(graph.unresolved_imports)}",
+        f"- Standard-library imports: {len(categories['standard_library'])}",
+        f"- Third-party imports: {len(categories['third_party'])}",
+        f"- Unresolved imports: {len(categories['unresolved'])}",
         f"- Dependency cycles: {len(find_dependency_cycles(graph))}",
         "",
         "## Modules",
@@ -29,7 +62,7 @@ def render_markdown(
     for module in sorted(modules, key=lambda item: item.path.as_posix()):
         lines.extend(
             [
-                f"### `{module.path.as_posix()}`",
+                f"### `{_display_path(module.path, root)}`",
                 "",
                 "#### Imports",
                 "",
@@ -87,17 +120,25 @@ def render_markdown(
     else:
         lines.append("- None detected")
 
-    lines.extend(["", "## Unresolved Imports", ""])
+    for category, title in (
+        ("standard_library", "Standard Library Imports"),
+        ("third_party", "Third-Party Imports"),
+        ("unresolved", "Unresolved Imports"),
+    ):
+        lines.extend(["", f"## {title}", ""])
 
-    if graph.unresolved_imports:
-        for source, imported in graph.unresolved_imports:
-            lines.append(f"- `{source}` imports `{imported}`")
-    else:
-        lines.append("- None")
+        imports = categories[category]
+
+        if imports:
+            for source, imported in imports:
+                lines.append(f"- `{source}` imports `{imported}`")
+        else:
+            lines.append("- None")
 
     lines.extend(["", "## Dependency Cycles", ""])
 
     cycles = find_dependency_cycles(graph)
+
     if cycles:
         for cycle in cycles:
             cycle_path = " → ".join((*cycle, cycle[0]))
@@ -112,19 +153,24 @@ def render_markdown(
 def render_json(
     modules: list[ModuleInfo],
     graph: DependencyGraph,
+    root: Path | None = None,
 ) -> str:
     """Render repository analysis as deterministic JSON."""
+    categories = _classify_unresolved_imports(graph)
+
     payload = {
         "schema_version": 1,
         "summary": {
             "modules": len(modules),
             "internal_dependencies": len(graph.edges),
-            "unresolved_imports": len(graph.unresolved_imports),
+            "standard_library_imports": len(categories["standard_library"]),
+            "third_party_imports": len(categories["third_party"]),
+            "unresolved_imports": len(categories["unresolved"]),
             "dependency_cycles": len(find_dependency_cycles(graph)),
         },
         "modules": [
             {
-                "path": module.path.as_posix(),
+                "path":  _display_path(module.path, root),
                 "imports": [
                     {
                         "module": item.module,
@@ -158,22 +204,33 @@ def render_json(
             for module in sorted(modules, key=lambda item: item.path.as_posix())
         ],
         "dependencies": [
-            {"source": edge.source, "target": edge.target} for edge in graph.edges
+            {"source": edge.source, "target": edge.target}
+            for edge in graph.edges
+        ],
+        "standard_library_imports": [
+            {"source": source, "module": imported}
+            for source, imported in categories["standard_library"]
+        ],
+        "third_party_imports": [
+            {"source": source, "module": imported}
+            for source, imported in categories["third_party"]
         ],
         "unresolved_imports": [
             {"source": source, "module": imported}
-            for source, imported in graph.unresolved_imports
+            for source, imported in categories["unresolved"]
         ],
-        "dependency_cycles": [list(cycle) for cycle in find_dependency_cycles(graph)],
+        "dependency_cycles": [
+            list(cycle) for cycle in find_dependency_cycles(graph)
+        ],
     }
 
     return json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
-
 
 def write_reports(
     modules: list[ModuleInfo],
     graph: DependencyGraph,
     output_dir: Path,
+    root: Path | None = None,
 ) -> tuple[Path, Path]:
     """Write Markdown and JSON reports to an output directory."""
     output_dir = Path(output_dir)
@@ -187,12 +244,12 @@ def write_reports(
     json_path = output_dir / "report.json"
 
     markdown_path.write_text(
-        render_markdown(modules, graph),
-        encoding="utf-8",
-    )
+    render_markdown(modules, graph, root),
+    encoding="utf-8",
+)
     json_path.write_text(
-        render_json(modules, graph),
-        encoding="utf-8",
-    )
+    render_json(modules, graph, root),
+    encoding="utf-8",
+)
 
     return markdown_path, json_path
