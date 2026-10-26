@@ -2,14 +2,20 @@
   <img src="https://raw.githubusercontent.com/launchforgedev/Repo-Ramp/main/assets/reporamp-logo.png" alt="RepoRamp logo" width="420" />
 </p>
 
+<h1 align="center">RepoRamp</h1>
+
 <p align="center">
   <strong>Python Codebase Intelligence</strong><br />
   Scan. Understand. Improve.
 </p>
 
-[![PyPI version](https://img.shields.io/pypi/v/reporamp)](https://pypi.org/project/reporamp/)
-[![Python versions](https://img.shields.io/pypi/pyversions/reporamp)](https://pypi.org/project/reporamp/)
-[![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/launchforgedev/Repo-Ramp/blob/main/LICENSE)
+<p align="center">
+  <a href="https://pypi.org/project/reporamp/"><img src="https://img.shields.io/pypi/v/reporamp?label=PyPI" alt="PyPI version" /></a>
+  <img src="https://img.shields.io/badge/Python-3.10%2B-blue" alt="Python 3.10 or newer" />
+  <a href="https://github.com/launchforgedev/Repo-Ramp/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license" /></a>
+</p>
+
+<p align="center"><strong>Requires Python 3.10 or newer</strong></p>
 
 
 RepoRamp is a command-line tool that helps developers understand the structure of a Python codebase. It scans Python modules, maps internal imports, detects dependency cycles, flags selected code-quality issues, and generates Markdown and JSON reports.
