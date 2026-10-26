@@ -20,6 +20,10 @@ def find_empty_modules(
     findings = []
 
     for module_name, file_path in modules.items():
+        # An empty `__init__.py` is a package marker, not an unused module.
+        if file_path.name == "__init__.py":
+            continue
+
         try:
             source = file_path.read_text(encoding="utf-8")
             tree = ast.parse(source, filename=str(file_path))
