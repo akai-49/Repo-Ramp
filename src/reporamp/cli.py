@@ -6,6 +6,12 @@ from typing import Annotated
 
 import typer
 
+from reporamp.ai import (
+    AISummaryUnavailable,
+    build_analysis_context,
+    generate_ai_summary,
+    generate_architecture_summary,
+)
 from reporamp.analyzer import _module_name, analyze_dependencies
 from reporamp.config import load_config, load_entry_points
 from reporamp.diff import diff_reports, has_new_problems, load_report, render_diff
@@ -152,6 +158,17 @@ def analyze(
             ),
         ),
     ] = None,
+    ai: Annotated[
+        bool,
+        typer.Option(
+            "--ai",
+            help=(
+                "Add an architecture summary written by Claude (needs "
+                'ANTHROPIC_API_KEY and pip install "reporamp[ai]"). Only '
+                "module names and dependency data are sent, never source code."
+            ),
+        ),
+    ] = False,
 ) -> None:
     """Analyze a repository and generate Markdown and JSON reports.
 
@@ -223,6 +240,19 @@ def analyze(
             max_function_lines=max_function_lines,
             entry_points=entry_points,
         )
+        summary = None
+        if ai:
+            context = build_analysis_context(modules, graph, root)
+            try:
+                summary = generate_ai_summary(context)
+                typer.echo("AI architecture summary generated.")
+            except AISummaryUnavailable as exc:
+                typer.echo(
+                    f"AI summary unavailable ({exc}); using the local summary.",
+                    err=True,
+                )
+                summary = generate_architecture_summary(context)
+
         report_paths = write_reports(
             modules,
             graph,
@@ -231,6 +261,7 @@ def analyze(
             findings=findings,
             parse_errors=parse_errors,
             report_format=report_format.value,
+            summary=summary,
         )
 
     except (OSError, ValueError) as exc:

@@ -25,6 +25,9 @@ reporamp = "reporamp.cli:app"
 
 
 [project.optional-dependencies]
+ai = [
+    "anthropic>=2.0",
+]
 dev = [
     "pytest",
     "ruff",
