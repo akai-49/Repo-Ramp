@@ -119,3 +119,61 @@ def test_classifies_unknown_imports() -> None:
 
 def test_classifies_empty_import() -> None:
     assert classify_import("") == "unresolved"
+
+def _write_app_package(root: Path) -> list:
+    app_dir = root / "app"
+    app_dir.mkdir()
+    (app_dir / "__init__.py").write_text("VERSION = 1\n", encoding="utf-8")
+    (app_dir / "models.py").write_text("", encoding="utf-8")
+    (app_dir / "services.py").write_text("", encoding="utf-8")
+    return [
+        _parse(root, "app/__init__.py"),
+        _parse(root, "app/models.py"),
+        _parse(root, "app/services.py"),
+    ]
+
+
+def test_from_package_import_submodules(tmp_path: Path) -> None:
+    modules = _write_app_package(tmp_path)
+    (tmp_path / "app" / "api.py").write_text(
+        "from app import models, services, VERSION\n",
+        encoding="utf-8",
+    )
+    modules.append(_parse(tmp_path, "app/api.py"))
+
+    graph = analyze_dependencies(modules, tmp_path)
+
+    assert graph.edges == (
+        DependencyEdge("app.api", "app"),
+        DependencyEdge("app.api", "app.models"),
+        DependencyEdge("app.api", "app.services"),
+    )
+
+
+def test_relative_from_dot_import_submodules(tmp_path: Path) -> None:
+    modules = _write_app_package(tmp_path)
+    (tmp_path / "app" / "api.py").write_text(
+        "from . import models\nfrom . import VERSION\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "app" / "__init__.py").write_text(
+        "from . import services\n",
+        encoding="utf-8",
+    )
+    modules = [
+        _parse(tmp_path, path)
+        for path in (
+            "app/__init__.py",
+            "app/api.py",
+            "app/models.py",
+            "app/services.py",
+        )
+    ]
+
+    graph = analyze_dependencies(modules, tmp_path)
+
+    assert graph.edges == (
+        DependencyEdge("app", "app.services"),
+        DependencyEdge("app.api", "app"),
+        DependencyEdge("app.api", "app.models"),
+    )
