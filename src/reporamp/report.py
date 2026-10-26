@@ -43,6 +43,7 @@ def render_markdown(
     graph: DependencyGraph,
     root: Path | None = None,
     findings: list[Finding] | None = None,
+    parse_errors: list[tuple[str, str]] | None = None,
 ) -> str:
     """Render repository analysis as a Markdown document."""
     categories = _classify_unresolved_imports(graph)
@@ -58,7 +59,17 @@ def render_markdown(
         f"- Third-party imports: {len(categories['third_party'])}",
         f"- Unresolved imports: {len(categories['unresolved'])}",
         f"- Dependency cycles: {len(find_dependency_cycles(graph))}",
+        f"- Files with parse errors: {len(parse_errors or [])}",
         "",
+    ]
+
+    if parse_errors:
+        lines.extend(["## Parse Errors", ""])
+        for path, error in sorted(parse_errors):
+            lines.append(f"- `{path}`: {error}")
+        lines.append("")
+
+    lines += [
         "## Modules",
         "",
     ]
@@ -174,6 +185,7 @@ def render_json(
     graph: DependencyGraph,
     root: Path | None = None,
     findings: list[Finding] | None = None,
+    parse_errors: list[tuple[str, str]] | None = None,
 ) -> str:
     """Render repository analysis as deterministic JSON."""
     categories = _classify_unresolved_imports(graph)
@@ -187,8 +199,12 @@ def render_json(
             "third_party_imports": len(categories["third_party"]),
             "unresolved_imports": len(categories["unresolved"]),
             "dependency_cycles": len(find_dependency_cycles(graph)),
-            
+            "parse_errors": len(parse_errors or []),
         },
+        "parse_errors": [
+            {"path": path, "error": error}
+            for path, error in sorted(parse_errors or [])
+        ],
         "quality_findings": [
                     {
                         "rule_id": finding.rule_id,
@@ -263,6 +279,7 @@ def write_reports(
     output_dir: Path,
     root: Path | None = None,
     findings: list[Finding] | None = None,
+    parse_errors: list[tuple[str, str]] | None = None,
 ) -> tuple[Path, Path]:
     """Write Markdown and JSON reports to an output directory."""
     output_dir = Path(output_dir)
@@ -276,11 +293,11 @@ def write_reports(
     json_path = output_dir / "report.json"
 
     markdown_path.write_text(
-    render_markdown(modules, graph, root, findings),
+    render_markdown(modules, graph, root, findings, parse_errors),
     encoding="utf-8",
 )
     json_path.write_text(
-    render_json(modules, graph, root, findings),
+    render_json(modules, graph, root, findings, parse_errors),
     encoding="utf-8",
 )
 
