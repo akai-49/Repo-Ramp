@@ -5,11 +5,11 @@ from typing import Annotated
 
 import typer
 
-from reporamp.analyzer import analyze_dependencies, _module_name
+from reporamp.analyzer import _module_name, analyze_dependencies
 from reporamp.parser import parse_python_file
+from reporamp.quality import analyze_quality
 from reporamp.report import write_reports
 from reporamp.scanner import scan_repository
-from reporamp.quality import analyze_quality
 
 app = typer.Typer(
     name="reporamp",

@@ -1,9 +1,10 @@
 """Analyze internal module dependencies in a Python repository."""
 
-from dataclasses import dataclass
-from pathlib import Path
 import sys
+from dataclasses import dataclass
 from importlib.util import find_spec
+from pathlib import Path
+
 from reporamp.parser import ModuleInfo
 
 
