@@ -6,6 +6,7 @@ from pathlib import Path
 from reporamp.analyzer import (
     DependencyGraph,
     classify_import,
+    coupling_metrics,
     find_dependency_cycles,
 )
 from reporamp.parser import ModuleInfo
@@ -29,6 +30,7 @@ def _classify_unresolved_imports(
     return categories
 
 MAX_GRAPH_NODES = 60
+MAX_COUPLING_ROWS = 10
 
 
 def _render_mermaid(
@@ -201,6 +203,31 @@ def render_markdown(
     else:
         lines.append("- None detected")
 
+    lines.extend(["", "## Most Coupled Modules", ""])
+
+    coupled = sorted(
+        (item for item in coupling_metrics(graph) if item.fan_in + item.fan_out),
+        key=lambda item: (-(item.fan_in + item.fan_out), item.module),
+    )[:MAX_COUPLING_ROWS]
+
+    if coupled:
+        lines.extend(
+            [
+                "Fan-in (Ca) counts modules that import this one; fan-out (Ce) "
+                "counts modules it imports. Instability I = Ce / (Ca + Ce).",
+                "",
+                "| Module | Fan-in (Ca) | Fan-out (Ce) | Instability (I) |",
+                "| --- | ---: | ---: | ---: |",
+            ]
+        )
+        for item in coupled:
+            lines.append(
+                f"| `{item.module}` | {item.fan_in} | {item.fan_out} "
+                f"| {item.instability:.2f} |"
+            )
+    else:
+        lines.append("- None detected")
+
     for category, title in (
         ("standard_library", "Standard Library Imports"),
         ("third_party", "Third-Party Imports"),
@@ -334,6 +361,15 @@ def render_json(
         ],
         "dependency_cycles": [
             list(cycle) for cycle in find_dependency_cycles(graph)
+        ],
+        "coupling": [
+            {
+                "module": item.module,
+                "fan_in": item.fan_in,
+                "fan_out": item.fan_out,
+                "instability": item.instability,
+            }
+            for item in coupling_metrics(graph)
         ],
     }
 
