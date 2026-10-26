@@ -61,3 +61,15 @@ def test_returns_deterministic_order(tmp_path: Path) -> None:
         Path("middle.py"),
         Path("zebra.py"),
     ]
+
+
+def test_exclude_patterns_skip_files_and_directories(tmp_path: Path) -> None:
+    (tmp_path / "app.py").write_text("", encoding="utf-8")
+    (tmp_path / "app_test.py").write_text("", encoding="utf-8")
+    for directory in ("tests", "migrations"):
+        (tmp_path / directory).mkdir()
+        (tmp_path / directory / "module.py").write_text("", encoding="utf-8")
+
+    result = scan_repository(tmp_path, exclude=["*_test.py", "tests", "migrations/*"])
+
+    assert result == [Path("app.py")]

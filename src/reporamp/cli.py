@@ -1,5 +1,6 @@
 """Command-line interface for RepoRamp."""
 
+from enum import Enum
 from pathlib import Path
 from typing import Annotated
 
@@ -16,6 +17,14 @@ app = typer.Typer(
     help="Understand Python codebases through structural analysis.",
     no_args_is_help=True,
 )
+
+class ReportFormat(str, Enum):
+    """Report formats that the analyze command can write."""
+
+    md = "md"
+    json = "json"
+    both = "both"
+
 
 def print_banner() -> None:
     """Display the RepoRamp CLI banner."""
@@ -74,6 +83,28 @@ def analyze(
             help="Exit with code 1 if any Python file cannot be parsed.",
         ),
     ] = False,
+    max_deps: Annotated[
+        int,
+        typer.Option(
+            "--max-deps",
+            min=0,
+            help="QR002 threshold: flag modules with more internal dependencies.",
+        ),
+    ] = 5,
+    exclude: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--exclude",
+            help=(
+                "Glob pattern for files or directories to skip, matched against "
+                "names and root-relative paths. Repeatable."
+            ),
+        ),
+    ] = None,
+    report_format: Annotated[
+        ReportFormat,
+        typer.Option("--format", help="Which reports to write."),
+    ] = ReportFormat.both,
 ) -> None:
     """Analyze a repository and generate Markdown and JSON reports."""
     root = root.resolve()
@@ -85,7 +116,7 @@ def analyze(
     typer.echo()
 
     try:
-        source_files = scan_repository(root)
+        source_files = scan_repository(root, exclude=exclude or ())
         modules = []
         parse_errors: list[tuple[str, str]] = []
 
@@ -104,14 +135,19 @@ def analyze(
     _module_name(module.path, root): module.path
     for module in modules
 }
-        findings = analyze_quality(module_paths, graph)
-        markdown_path, json_path = write_reports(
+        findings = analyze_quality(
+            module_paths,
+            graph,
+            dependency_threshold=max_deps,
+        )
+        report_paths = write_reports(
             modules,
             graph,
             output,
             root=root,
             findings=findings,
             parse_errors=parse_errors,
+            report_format=report_format.value,
         )
 
     except (OSError, ValueError) as exc:
@@ -124,8 +160,8 @@ def analyze(
     typer.echo(f"Unresolved imports: {len(graph.unresolved_imports)}")
     typer.echo(f"Files with parse errors: {len(parse_errors)}")
     typer.echo("\nReports generated:")
-    typer.echo(f"  {markdown_path}")
-    typer.echo(f"  {json_path}")
+    for report_path in report_paths:
+        typer.echo(f"  {report_path}")
 
     if parse_errors:
         typer.echo(f"\nAnalysis completed with {len(parse_errors)} parse error(s).")

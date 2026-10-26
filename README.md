@@ -61,6 +61,20 @@ Files that cannot be parsed (for example, syntax errors) are skipped, listed in 
 reporamp analyze . --strict
 ```
 
+### Options
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `--output`, `-o` | `reporamp-report` | Directory where reports are written. |
+| `--format md\|json\|both` | `both` | Which reports to write. |
+| `--max-deps INT` | `5` | `QR002` threshold: flag modules with more internal dependencies than this. |
+| `--exclude PATTERN` | — | Glob for files or directories to skip, matched against names and root-relative paths. Repeatable; added to the built-in exclusions (`.venv`, `build`, `__pycache__`, …). |
+| `--strict` | off | Exit with code 1 if any file fails to parse. |
+
+```bash
+reporamp analyze . --exclude tests --exclude "migrations/*" --max-deps 8 --format md
+```
+
 See all supported options:
 
 ```bash

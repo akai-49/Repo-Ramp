@@ -105,3 +105,12 @@ def test_empty_analysis_produces_valid_reports() -> None:
     payload = json.loads(render_json([], graph))
     assert payload["modules"] == []
     assert payload["dependencies"] == []
+
+
+def test_write_reports_markdown_only(tmp_path: Path) -> None:
+    modules, graph = build_analysis(tmp_path)
+
+    paths = write_reports(modules, graph, tmp_path / "out", report_format="md")
+
+    assert [path.name for path in paths] == ["report.md"]
+    assert not (tmp_path / "out" / "report.json").exists()
