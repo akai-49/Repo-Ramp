@@ -166,6 +166,7 @@ An analysis report can include:
 - Unresolved imports
 - Dependency cycles
 - A Mermaid dependency graph (`flowchart`) of internal edges, with cycle edges highlighted in red. GitHub renders it inline. Large graphs are capped at the 60 most connected modules, and the report says when the graph is truncated.
+- Coupling metrics per module: fan-in (Ca), fan-out (Ce) and instability I = Ce / (Ca + Ce). The JSON report lists every module under `coupling` (`instability` is `null` for modules with no internal edges); the Markdown report shows a "Most Coupled Modules" table of the top 10 by Ca + Ce.
 - Module imports, classes, and functions
 - Code-quality findings and suggestions
 

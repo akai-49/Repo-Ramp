@@ -157,3 +157,19 @@ def test_mermaid_graph_is_truncated_to_most_connected_nodes() -> None:
     assert "showing 60 of 71 connected modules" in report
     assert '["hub"]' in report
     assert report.count(" --> ") == 59
+
+
+def test_reports_include_coupling_metrics(tmp_path: Path) -> None:
+    modules, graph = build_analysis(tmp_path)
+
+    payload = json.loads(render_json(modules, graph))
+    report = render_markdown(modules, graph)
+
+    assert payload["coupling"] == [
+        {"module": "app", "fan_in": 0, "fan_out": 1, "instability": 1.0},
+        {"module": "services", "fan_in": 0, "fan_out": 0, "instability": None},
+        {"module": "services.auth", "fan_in": 1, "fan_out": 0, "instability": 0.0},
+    ]
+    assert "## Most Coupled Modules" in report
+    assert "| `app` | 0 | 1 | 1.00 |" in report
+    assert "`services` |" not in report
