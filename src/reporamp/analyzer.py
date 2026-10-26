@@ -108,13 +108,11 @@ def analyze_dependencies(
             else:
                 imported_module = imported.module or ""
 
-            resolved = _resolve_internal_import(
-                imported_module,
-                available_modules,
-            )
+            resolved = None
 
-            # `from package import symbol` may refer to a submodule.
-            if resolved is None and imported.name:
+            # `from package import name` may refer to a submodule; prefer it
+            # over the package, which only defines symbols in `__init__.py`.
+            if imported.name:
                 candidate = (
                     f"{imported_module}.{imported.name}"
                     if imported_module
@@ -122,6 +120,12 @@ def analyze_dependencies(
                 )
                 if candidate in available_modules:
                     resolved = candidate
+
+            if resolved is None:
+                resolved = _resolve_internal_import(
+                    imported_module,
+                    available_modules,
+                )
 
             if resolved is None:
                 unresolved.add(
