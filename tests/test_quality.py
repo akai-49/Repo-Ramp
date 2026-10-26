@@ -10,6 +10,8 @@ from reporamp.quality import (
     find_cycle_findings,
     find_empty_modules,
     find_high_dependency_modules,
+    parse_rule_selection,
+    select_findings,
 )
 
 
@@ -209,3 +211,23 @@ def test_does_not_flag_empty_package_init(tmp_path: Path):
     findings = find_empty_modules({"pkg": init_path, "pkg.empty": empty_path})
 
     assert [finding.module for finding in findings] == ["pkg.empty"]
+
+
+def test_parse_rule_selection_accepts_ids_and_aliases():
+    assert parse_rule_selection(" qr003, QR002 ,") == {"QR002", "QR003"}
+    assert parse_rule_selection("cycles") == {"QR003"}
+    assert parse_rule_selection(None) == frozenset()
+
+
+def test_parse_rule_selection_rejects_unknown_rules():
+    with pytest.raises(ValueError, match="QR999"):
+        parse_rule_selection("QR999")
+
+
+def test_select_findings_filters_by_rule():
+    findings = [
+        Finding("QR001", "warning", "empty", "a", "fix"),
+        Finding("QR003", "warning", "cycle", "b", "fix"),
+    ]
+
+    assert select_findings(findings, frozenset({"QR003"})) == [findings[1]]
