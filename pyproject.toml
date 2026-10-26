@@ -10,7 +10,13 @@ description = "A developer tool for understanding Python codebases"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
-dependencies = []
+dependencies = [
+     "typer>=0.12,<1.0",
+]
+
+[project.scripts]
+reporamp = "reporamp.cli:app"
+
 
 [project.optional-dependencies]
 dev = [
