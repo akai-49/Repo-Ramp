@@ -43,15 +43,15 @@ flowchart LR
     cfg["pyproject.toml<br/>[tool.reporamp]"] -.-> scan
     scan --> parse["Parse with ast<br/>imports, classes,<br/>functions"]
     parse -->|syntax error| errors["Parse errors<br/>(skipped, reported)"]
-    parse --> graph["Dependency graph<br/>internal imports"]
-    graph --> cycles["Cycle detection"]
-    graph --> rules["Quality rules<br/>QR001–QR006"]
-    graph --> coupling["Coupling metrics<br/>Ca, Ce, I"]
+    parse --> deps["Dependency graph<br/>internal imports"]
+    deps --> cycles["Cycle detection"]
+    deps --> rules["Quality rules<br/>QR001–QR006"]
+    deps --> coupling["Coupling metrics<br/>Ca, Ce, I"]
     cycles & rules & coupling & errors --> reports["report.md<br/>report.json"]
     reports --> gate["--fail-on<br/>exit code 2"]
     reports --> diff["reporamp diff<br/>base vs head"]
-    graph -.-> ai["--ai<br/>Claude summary"]
-    graph -.-> mcp["reporamp mcp<br/>MCP tools"]
+    deps -.-> ai["--ai<br/>Claude summary"]
+    deps -.-> mcp["reporamp mcp<br/>MCP tools"]
 ```
 
 Source code is parsed, never executed. Dashed arrows are optional.
