@@ -70,10 +70,21 @@ reporamp analyze . --strict
 | `--max-deps INT` | `5` | `QR002` threshold: flag modules with more internal dependencies than this. |
 | `--exclude PATTERN` | — | Glob for files or directories to skip, matched against names and root-relative paths. Repeatable; added to the built-in exclusions (`.venv`, `build`, `__pycache__`, …). |
 | `--strict` | off | Exit with code 1 if any file fails to parse. |
+| `--fail-on RULES` | — | Comma-separated rule IDs, or `cycles` for `QR003`. Exit with code 2 if any matching finding exists. |
 
 ```bash
 reporamp analyze . --exclude tests --exclude "migrations/*" --max-deps 8 --format md
 ```
+
+### CI gating
+
+Use `--fail-on` to fail a CI job when selected rules fire. Reports are still written first.
+
+```bash
+reporamp analyze . --fail-on QR003,QR002   # or: --fail-on cycles
+```
+
+Exit codes: `0` success, `1` error (or a parse error with `--strict`), `2` a `--fail-on` rule matched.
 
 See all supported options:
 

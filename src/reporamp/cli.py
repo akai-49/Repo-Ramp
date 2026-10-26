@@ -8,7 +8,7 @@ import typer
 
 from reporamp.analyzer import _module_name, analyze_dependencies
 from reporamp.parser import parse_python_file
-from reporamp.quality import analyze_quality
+from reporamp.quality import analyze_quality, parse_rule_selection, select_findings
 from reporamp.report import write_reports
 from reporamp.scanner import scan_repository
 
@@ -105,8 +105,23 @@ def analyze(
         ReportFormat,
         typer.Option("--format", help="Which reports to write."),
     ] = ReportFormat.both,
+    fail_on: Annotated[
+        str | None,
+        typer.Option(
+            "--fail-on",
+            help=(
+                "Comma-separated rule IDs (or 'cycles' for QR003). Exit with "
+                "code 2 if any matching finding exists, e.g. --fail-on QR003,QR002."
+            ),
+        ),
+    ] = None,
 ) -> None:
     """Analyze a repository and generate Markdown and JSON reports."""
+    try:
+        fail_rules = parse_rule_selection(fail_on)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc), param_hint="--fail-on") from exc
+
     root = root.resolve()
     output = output.resolve()
 
@@ -167,10 +182,23 @@ def analyze(
         typer.echo(f"\nAnalysis completed with {len(parse_errors)} parse error(s).")
         if strict:
             raise typer.Exit(code=1)
-        return
+    else:
+        typer.echo("\nAnalysis completed successfully.")
 
-    typer.echo("\nAnalysis completed successfully.")
+    failing = select_findings(findings, fail_rules)
 
+    if failing:
+        typer.echo(
+            f"\n{len(failing)} finding(s) matched --fail-on "
+            f"{','.join(sorted(fail_rules))}:",
+            err=True,
+        )
+        for finding in failing:
+            typer.echo(
+                f"  [{finding.rule_id}] {finding.module}: {finding.message}",
+                err=True,
+            )
+        raise typer.Exit(code=2)
 
 if __name__ == "__main__":
     app()
