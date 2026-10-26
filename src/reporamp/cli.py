@@ -12,13 +12,11 @@ from reporamp.ai import (
     generate_ai_summary,
     generate_architecture_summary,
 )
-from reporamp.analyzer import _module_name, analyze_dependencies
-from reporamp.config import load_config, load_entry_points
+from reporamp.config import DEFAULTS, load_config
 from reporamp.diff import diff_reports, has_new_problems, load_report, render_diff
-from reporamp.parser import parse_python_file
-from reporamp.quality import analyze_quality, parse_rule_selection, select_findings
+from reporamp.pipeline import run_analysis
+from reporamp.quality import parse_rule_selection, select_findings
 from reporamp.report import write_reports
-from reporamp.scanner import scan_repository
 
 app = typer.Typer(
     name="reporamp",
@@ -178,26 +176,25 @@ def analyze(
     root = root.resolve()
 
     try:
-        config = load_config(root)
-        entry_points = load_entry_points(root)
+        config = {**DEFAULTS, **load_config(root)}
     except ValueError as exc:
         typer.echo(f"Error: invalid pyproject.toml: {exc}", err=True)
         raise typer.Exit(code=1) from exc
 
     if max_deps is None:
-        max_deps = config.get("max_deps", 5)
+        max_deps = config["max_deps"]
     if max_fan_in is None:
-        max_fan_in = config.get("max_fan_in", 10)
+        max_fan_in = config["max_fan_in"]
     if max_module_lines is None:
-        max_module_lines = config.get("max_module_lines", 1000)
+        max_module_lines = config["max_module_lines"]
     if max_function_lines is None:
-        max_function_lines = config.get("max_function_lines", 100)
+        max_function_lines = config["max_function_lines"]
     if exclude is None:
-        exclude = config.get("exclude", [])
+        exclude = config["exclude"]
     if fail_on is None:
-        fail_on = config.get("fail_on")
+        fail_on = config["fail_on"]
     if report_format is None:
-        report_format = ReportFormat(config.get("format", "both"))
+        report_format = ReportFormat(config["format"])
 
     try:
         fail_rules = parse_rule_selection(fail_on)
@@ -212,34 +209,23 @@ def analyze(
     typer.echo()
 
     try:
-        source_files = scan_repository(root, exclude=exclude)
-        modules = []
-        parse_errors: list[tuple[str, str]] = []
-
-        for relative_path in source_files:
-            try:
-                modules.append(parse_python_file(root / relative_path))
-            except (SyntaxError, UnicodeError) as exc:
-                parse_errors.append((relative_path.as_posix(), str(exc)))
+        analysis = run_analysis(
+            root,
+            exclude=exclude,
+            max_deps=max_deps,
+            max_fan_in=max_fan_in,
+            max_module_lines=max_module_lines,
+            max_function_lines=max_function_lines,
+        )
+        source_files = analysis.source_files
+        modules = analysis.modules
+        parse_errors = analysis.parse_errors
+        graph = analysis.graph
+        findings = analysis.findings
 
         for relative_path, error in parse_errors:
             typer.echo(f"Could not parse {relative_path}: {error}", err=True)
 
-        graph = analyze_dependencies(modules, root)
-        
-        module_paths = {
-    _module_name(module.path, root): module.path
-    for module in modules
-}
-        findings = analyze_quality(
-            module_paths,
-            graph,
-            dependency_threshold=max_deps,
-            fan_in_threshold=max_fan_in,
-            max_module_lines=max_module_lines,
-            max_function_lines=max_function_lines,
-            entry_points=entry_points,
-        )
         summary = None
         if ai:
             context = build_analysis_context(modules, graph, root)
@@ -329,6 +315,24 @@ def diff(
 
     if fail_on_new and has_new_problems(changes):
         raise typer.Exit(code=2)
+
+
+@app.command("mcp")
+def mcp() -> None:
+    """Run an MCP server over stdio (requires pip install "reporamp[mcp]")."""
+    try:
+        from reporamp.mcp_server import create_server
+
+        server = create_server()
+    except ImportError as exc:
+        typer.echo(
+            'Error: the MCP server needs the "mcp" package; '
+            'run pip install "reporamp[mcp]"',
+            err=True,
+        )
+        raise typer.Exit(code=1) from exc
+
+    server.run()
 
 if __name__ == "__main__":
     app()
