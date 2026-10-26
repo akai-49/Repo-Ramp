@@ -4,7 +4,7 @@ from pathlib import Path
 
 from reporamp.analyzer import DependencyGraph, find_dependency_cycles
 
-RULE_IDS = ("QR001", "QR002", "QR003")
+RULE_IDS = ("QR001", "QR002", "QR003", "QR004", "QR005", "QR006")
 
 # `--fail-on` aliases for rule IDs.
 RULE_ALIASES = {"cycles": "QR003"}
@@ -121,10 +121,133 @@ def find_cycle_findings(
     return findings
 
 
+def find_high_fan_in_modules(
+    graph: DependencyGraph,
+    threshold: int = 10,
+) -> list[Finding]:
+    importers: dict[str, set[str]] = {}
+
+    for edge in graph.edges:
+        importers.setdefault(edge.target, set()).add(edge.source)
+
+    return [
+        Finding(
+            rule_id="QR004",
+            severity="warning",
+            message=f"Module is imported by {len(sources)} internal modules",
+            module=module,
+            suggestion=(
+                "This may be a 'god module'; split unrelated responsibilities "
+                "so changes to it affect fewer modules"
+            ),
+        )
+        for module, sources in sorted(importers.items())
+        if len(sources) > threshold
+    ]
+
+
+# Modules that are run or discovered by tools rather than imported.
+ENTRY_POINT_NAMES = frozenset({"__main__", "conftest", "setup"})
+
+
+def _is_entry_point(module: str, file_path: Path | None) -> bool:
+    leaf = module.rsplit(".", maxsplit=1)[-1]
+    return (
+        leaf in ENTRY_POINT_NAMES
+        or leaf.startswith("test_")
+        or leaf.endswith("_test")
+        or (file_path is not None and file_path.name == "__init__.py")
+    )
+
+
+def find_orphan_modules(
+    modules: dict[str, Path],
+    graph: DependencyGraph,
+    entry_points: frozenset[str] = frozenset(),
+) -> list[Finding]:
+    imported = {edge.target for edge in graph.edges}
+
+    return [
+        Finding(
+            rule_id="QR005",
+            severity="info",
+            message="Module is not imported by any other module",
+            module=module,
+            suggestion=(
+                "Remove the module if it is unused, or register it as an "
+                "entry point (for example a console script) if it is run directly"
+            ),
+        )
+        for module in graph.modules
+        if module not in imported
+        and module not in entry_points
+        and not _is_entry_point(module, modules.get(module))
+    ]
+
+
+def find_oversized_code(
+    modules: dict[str, Path],
+    max_module_lines: int = 1000,
+    max_function_lines: int = 100,
+) -> list[Finding]:
+    findings = []
+
+    for module_name, file_path in modules.items():
+        try:
+            source = file_path.read_text(encoding="utf-8")
+            tree = ast.parse(source, filename=str(file_path))
+        except (OSError, UnicodeError, SyntaxError):
+            continue
+
+        line_count = len(source.splitlines())
+
+        if line_count > max_module_lines:
+            findings.append(
+                Finding(
+                    rule_id="QR006",
+                    severity="warning",
+                    message=(
+                        f"Module has {line_count} lines "
+                        f"(limit {max_module_lines})"
+                    ),
+                    module=module_name,
+                    suggestion="Split the module into smaller, focused modules",
+                )
+            )
+
+        functions = [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        ]
+
+        for node in sorted(functions, key=lambda item: item.lineno):
+            length = (node.end_lineno or node.lineno) - node.lineno + 1
+            if length > max_function_lines:
+                findings.append(
+                    Finding(
+                        rule_id="QR006",
+                        severity="warning",
+                        message=(
+                            f"Function `{node.name}` (line {node.lineno}) has "
+                            f"{length} lines (limit {max_function_lines})"
+                        ),
+                        module=module_name,
+                        suggestion="Extract parts of the function into helpers",
+                    )
+                )
+
+    return findings
+
+
 def analyze_quality(
     modules: dict[str, Path],
     graph: DependencyGraph,
     dependency_threshold: int = 5,
+    fan_in_threshold: int = 10,
+    max_module_lines: int = 1000,
+    max_function_lines: int = 100,
+    entry_points: frozenset[str] = frozenset(),
 ) -> list[Finding]:
     findings = []
 
@@ -136,6 +259,15 @@ def analyze_quality(
         )
     )
     findings.extend(find_cycle_findings(graph))
+    findings.extend(find_high_fan_in_modules(graph, threshold=fan_in_threshold))
+    findings.extend(find_orphan_modules(modules, graph, entry_points))
+    findings.extend(
+        find_oversized_code(
+            modules,
+            max_module_lines=max_module_lines,
+            max_function_lines=max_function_lines,
+        )
+    )
 
     return findings
 
