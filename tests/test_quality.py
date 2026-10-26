@@ -1,15 +1,18 @@
 from dataclasses import FrozenInstanceError
+from pathlib import Path
 
 import pytest
 
-from reporamp.quality import Finding
-from pathlib import Path
-
-from reporamp.quality import find_empty_modules
 from reporamp.analyzer import DependencyEdge, DependencyGraph
-from reporamp.quality import find_high_dependency_modules
-from reporamp.quality import find_cycle_findings
-from reporamp.quality import analyze_quality
+from reporamp.quality import (
+    Finding,
+    analyze_quality,
+    find_cycle_findings,
+    find_empty_modules,
+    find_high_dependency_modules,
+)
+
+
 def test_finding_stores_its_fields():
     finding = Finding(
         rule_id="QR001",

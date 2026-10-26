@@ -1,8 +1,9 @@
-from reporamp.ai import build_analysis_context
+from pathlib import Path
+
+from reporamp.ai import build_analysis_context, generate_architecture_summary
 from reporamp.analyzer import DependencyEdge, DependencyGraph
 from reporamp.parser import ModuleInfo
-from reporamp.ai import generate_architecture_summary
-from pathlib import Path
+
 
 def test_build_analysis_context_for_empty_repository() -> None:
     empty_graph = DependencyGraph(
