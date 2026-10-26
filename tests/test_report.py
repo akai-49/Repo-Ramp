@@ -52,7 +52,7 @@ def test_json_has_expected_schema(tmp_path: Path) -> None:
 
     payload = json.loads(render_json(modules, graph))
 
-    assert payload["schema_version"] == 1
+    assert payload["schema_version"] == 2
     assert payload["summary"]["modules"] == 3
     assert payload["summary"]["internal_dependencies"] == 1
     assert payload["dependencies"] == [{"source": "app", "target": "services.auth"}]
@@ -81,7 +81,7 @@ def test_writes_both_report_files(tmp_path: Path) -> None:
     assert json_path.name == "report.json"
     assert markdown_path.is_file()
     assert json_path.is_file()
-    assert json.loads(json_path.read_text(encoding="utf-8"))["schema_version"] == 1
+    assert json.loads(json_path.read_text(encoding="utf-8"))["schema_version"] == 2
 
 
 def test_rejects_file_as_output_directory(tmp_path: Path) -> None:
