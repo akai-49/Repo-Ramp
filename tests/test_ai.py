@@ -3,21 +3,6 @@ from reporamp.analyzer import DependencyEdge, DependencyGraph
 from reporamp.parser import ModuleInfo
 from reporamp.ai import generate_architecture_summary
 from pathlib import Path
-def test_build_analysis_context_for_empty_repository() -> None:
-    empty_graph = DependencyGraph(
-        modules=(),
-        edges=(),
-        unresolved_imports=(),
-    )
-
-    context = build_analysis_context([], empty_graph)
-
-    assert context == {
-        "module_count": 0,
-        "dependency_count": 0,
-        "unresolved_import_count": 0,
-        "cycle_count": 0,
-    }
 
 def test_build_analysis_context_for_empty_repository() -> None:
     empty_graph = DependencyGraph(

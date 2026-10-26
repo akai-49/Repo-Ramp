@@ -5,10 +5,11 @@ from typing import Annotated
 
 import typer
 
-from reporamp.analyzer import analyze_dependencies
+from reporamp.analyzer import analyze_dependencies, _module_name
 from reporamp.parser import parse_python_file
 from reporamp.report import write_reports
 from reporamp.scanner import scan_repository
+from reporamp.quality import analyze_quality
 
 app = typer.Typer(
     name="reporamp",
@@ -74,11 +75,18 @@ def analyze(
             raise typer.Exit(code=1)
 
         graph = analyze_dependencies(modules, root)
+        
+        module_paths = {
+    _module_name(module.path, root): module.path
+    for module in modules
+}
+        findings = analyze_quality(module_paths, graph)
         markdown_path, json_path = write_reports(
             modules,
             graph,
             output,
             root=root,
+            findings=findings,
         )
 
     except (OSError, ValueError) as exc:

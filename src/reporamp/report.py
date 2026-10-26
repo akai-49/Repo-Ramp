@@ -8,6 +8,7 @@ from reporamp.analyzer import (
     classify_import,
     find_dependency_cycles,
 )
+from reporamp.quality import Finding
 
 def _classify_unresolved_imports(
     graph: DependencyGraph,
@@ -39,6 +40,7 @@ def render_markdown(
     modules: list[ModuleInfo],
     graph: DependencyGraph,
     root: Path | None = None,
+    findings: list[Finding] | None = None,
 ) -> str:
     """Render repository analysis as a Markdown document."""
     categories = _classify_unresolved_imports(graph)
@@ -147,6 +149,21 @@ def render_markdown(
         lines.append("- None detected")
 
     lines.append("")
+    lines.extend(["## Code Quality Findings", ""])
+    if findings:
+        for finding in findings:
+            lines.extend(
+                [
+                    f"### [{finding.rule_id}] {finding.severity.upper()}",
+                    "",
+                    f"- **Module:** `{finding.module}`",
+                    f"- **Issue:** {finding.message}",
+                    f"- **Suggestion:** {finding.suggestion}",
+                    "",
+                ]
+            )
+    else:
+        lines.extend(["No code quality findings.", ""])
     return "\n".join(lines)
 
 
@@ -154,6 +171,7 @@ def render_json(
     modules: list[ModuleInfo],
     graph: DependencyGraph,
     root: Path | None = None,
+    findings: list[Finding] | None = None,
 ) -> str:
     """Render repository analysis as deterministic JSON."""
     categories = _classify_unresolved_imports(graph)
@@ -167,7 +185,18 @@ def render_json(
             "third_party_imports": len(categories["third_party"]),
             "unresolved_imports": len(categories["unresolved"]),
             "dependency_cycles": len(find_dependency_cycles(graph)),
+            
         },
+        "quality_findings": [
+                    {
+                        "rule_id": finding.rule_id,
+                        "severity": finding.severity,
+                        "message": finding.message,
+                        "module": finding.module,
+                        "suggestion": finding.suggestion,
+                    }
+                    for finding in (findings or [])
+                ],
         "modules": [
             {
                 "path":  _display_path(module.path, root),
@@ -231,6 +260,7 @@ def write_reports(
     graph: DependencyGraph,
     output_dir: Path,
     root: Path | None = None,
+    findings: list[Finding] | None = None,
 ) -> tuple[Path, Path]:
     """Write Markdown and JSON reports to an output directory."""
     output_dir = Path(output_dir)
@@ -244,11 +274,11 @@ def write_reports(
     json_path = output_dir / "report.json"
 
     markdown_path.write_text(
-    render_markdown(modules, graph, root),
+    render_markdown(modules, graph, root, findings),
     encoding="utf-8",
 )
     json_path.write_text(
-    render_json(modules, graph, root),
+    render_json(modules, graph, root, findings),
     encoding="utf-8",
 )
 

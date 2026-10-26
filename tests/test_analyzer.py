@@ -5,6 +5,8 @@ from reporamp.analyzer import (
     DependencyGraph,
     analyze_dependencies,
     find_dependency_cycles,
+    classify_import
+
 )
 from reporamp.parser import parse_python_file
 
@@ -101,3 +103,20 @@ def test_graph_output_is_deterministic(tmp_path: Path) -> None:
         DependencyEdge("app", "a_module"),
         DependencyEdge("app", "z_module"),
     )
+
+def test_classifies_standard_library_imports() -> None:
+    assert classify_import("pathlib") == "standard_library"
+    assert classify_import("ast") == "standard_library"
+    assert classify_import("os.path") == "standard_library"
+
+
+def test_classifies_installed_third_party_imports() -> None:
+    assert classify_import("pytest") == "third_party"
+
+
+def test_classifies_unknown_imports() -> None:
+    assert classify_import("reporamp_package_that_does_not_exist") == "unresolved"
+
+
+def test_classifies_empty_import() -> None:
+    assert classify_import("") == "unresolved"
