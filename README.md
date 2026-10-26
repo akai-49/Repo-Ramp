@@ -76,6 +76,20 @@ reporamp analyze . --strict
 reporamp analyze . --exclude tests --exclude "migrations/*" --max-deps 8 --format md
 ```
 
+### Configuration file
+
+RepoRamp reads `[tool.reporamp]` from the analyzed repository's `pyproject.toml`. Command-line flags override these values (a `--exclude` flag replaces the configured list).
+
+```toml
+[tool.reporamp]
+max_deps = 8
+exclude = ["tests", "migrations/*"]
+fail_on = ["QR003", "QR002"]   # or "QR003,QR002"
+format = "both"                # md, json or both
+```
+
+Unknown keys or invalid values stop the run with an error so typos are not silently ignored.
+
 ### CI gating
 
 Use `--fail-on` to fail a CI job when selected rules fire. Reports are still written first.
