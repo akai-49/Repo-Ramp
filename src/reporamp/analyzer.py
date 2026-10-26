@@ -23,15 +23,22 @@ class DependencyGraph:
     unresolved_imports: tuple[tuple[str, str], ...]
 
 
+
 def _module_name(path: Path, root: Path) -> str:
     """Convert a source path into a repository-relative module name."""
     relative_path = path.relative_to(root)
     parts = list(relative_path.with_suffix("").parts)
 
+    # Support the common src-layout package structure:
+    # src/reporamp/module.py -> reporamp.module
+    if parts and parts[0] == "src":
+        parts.pop(0)
+
     if parts and parts[-1] == "__init__":
         parts.pop()
 
     return ".".join(parts)
+
 
 
 def _resolve_internal_import(
