@@ -2,7 +2,8 @@
 
 from dataclasses import dataclass
 from pathlib import Path
-
+import sys
+from importlib.util import find_spec
 from reporamp.parser import ModuleInfo
 
 
@@ -177,3 +178,21 @@ def find_dependency_cycles(
             visit(module)
 
     return tuple(sorted(cycles))
+
+def classify_import(imported_module: str) -> str:
+    """Classify an import as standard-library, third-party, or unresolved."""
+    if not imported_module:
+        return "unresolved"
+
+    top_level_name = imported_module.split(".", maxsplit=1)[0]
+
+    if top_level_name in sys.stdlib_module_names:
+        return "standard_library"
+
+    try:
+        if find_spec(top_level_name) is not None:
+            return "third_party"
+    except (ImportError, ValueError, ModuleNotFoundError):
+        pass
+
+    return "unresolved"
