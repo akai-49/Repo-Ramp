@@ -1,0 +1,45 @@
+name: RepoRamp
+description: Analyze a Python repository with RepoRamp and fail on selected findings.
+branding:
+  icon: git-pull-request
+  color: blue
+
+inputs:
+  path:
+    description: Repository directory to analyze.
+    default: "."
+  fail-on:
+    description: Comma-separated rule IDs (or "cycles") that fail the job. Empty disables gating.
+    default: "QR003"
+  output:
+    description: Directory where reports are written.
+    default: reporamp-report
+  args:
+    description: Extra arguments for "reporamp analyze", for example "--max-deps 8".
+    default: ""
+  python-version:
+    description: Python version used to run RepoRamp.
+    default: "3.12"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Install RepoRamp
+      shell: bash
+      run: python -m pip install "$GITHUB_ACTION_PATH"
+    - name: Run RepoRamp
+      shell: bash
+      env:
+        REPORAMP_PATH: ${{ inputs.path }}
+        REPORAMP_FAIL_ON: ${{ inputs.fail-on }}
+        REPORAMP_OUTPUT: ${{ inputs.output }}
+        REPORAMP_ARGS: ${{ inputs.args }}
+      # REPORAMP_ARGS is intentionally unquoted so it splits into arguments.
+      run: >-
+        reporamp analyze "$REPORAMP_PATH"
+        --output "$REPORAMP_OUTPUT"
+        --fail-on "$REPORAMP_FAIL_ON"
+        $REPORAMP_ARGS
