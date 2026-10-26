@@ -1,171 +1,122 @@
- <div align="center">
-
 <p align="center">
-  <img
-    src="assets/reporamp-logo.png"
-    alt="RepoRamp Logo"
-    width="600"
-  />
+  <img src="https://raw.githubusercontent.com/launchforgedev/Repo-Ramp/main/assets/reporamp-logo.png" alt="RepoRamp logo" width="420" />
 </p>
 
 <h1 align="center">RepoRamp</h1>
 
 <p align="center">
-  <strong>Scan. Understand. Improve.</strong>
-  <br />
-  Python Codebase Intelligence
+  <strong>Python Codebase Intelligence</strong><br />
+  Scan. Understand. Improve.
 </p>
 
----
+<p align="center">
+  <a href="https://pypi.org/project/reporamp/"><img src="https://img.shields.io/pypi/v/reporamp" alt="PyPI version" /></a>
+  <a href="https://pypi.org/project/reporamp/"><img src="https://img.shields.io/pypi/pyversions/reporamp" alt="Python versions" /></a>
+  <a href="https://github.com/launchforgedev/Repo-Ramp/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license" /></a>
+</p>
 
-[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-47%20passing-brightgreen)](#development)
-
-**Turn complex Python repositories into clear, actionable architecture insights.**
-
-RepoRamp scans Python source code, maps internal dependencies, identifies architectural issues, and generates Markdown and JSON reports—all without executing the analyzed source files.
-
-</div>
-
----
-
-## Overview
-
-Understanding an unfamiliar Python repository can be difficult. Dependencies are spread across files, circular imports can complicate maintenance, and structural issues are not always obvious.
-
-RepoRamp helps developers understand a codebase through static analysis and actionable quality findings.
+RepoRamp is a command-line tool that helps developers understand the structure of a Python codebase. It scans Python modules, maps internal imports, detects dependency cycles, flags selected code-quality issues, and generates Markdown and JSON reports.
 
 ## Features
 
-| Feature | Description |
-|---|---|
-| Repository scanning | Discover Python files while excluding common generated and environment directories. |
-| AST-based parsing | Extract imports, classes, functions, and methods from Python source. |
-| Dependency analysis | Build an internal dependency graph and identify circular dependencies. |
-| Quality analysis | Detect empty modules, excessive internal dependencies, and dependency cycles. |
-| Markdown reports | Generate readable architecture and quality reports. |
-| JSON reports | Export structured analysis data for automation and integrations. |
-| CLI | Analyze repositories directly from your terminal. |
+- **Python module discovery** — scans Python files while excluding common virtual environments, caches, and build directories.
+- **Import and dependency analysis** — identifies relationships between modules in a project.
+- **Circular dependency detection** — reports dependency cycles in the internal module graph.
+- **Code-quality checks** — reports selected structural issues:
+  - `QR001`: empty modules
+  - `QR002`: modules with many internal dependencies
+  - `QR003`: dependency cycles
+- **Markdown and JSON reports** — keep a human-readable architecture overview and machine-readable analysis output.
+- **Command-line interface** — run the analyzer from the project you want to inspect.
 
-## Quality Rules
+## Installation
 
-| Rule ID | Finding | Default severity |
-|---|---|---|
-| QR001 | Module contains no meaningful statements | Warning |
-| QR002 | Module has too many distinct internal dependencies | Warning |
-| QR003 | Circular dependency detected | Warning |
+Requires Python 3.10 or newer.
 
-The excessive-dependency rule uses a default threshold of five distinct dependencies. A warning is a signal to investigate, not proof that the code is defective.
-
-## Quick Start
-
-### Requirements
-
-- Python version supported by the project configuration
-- Git
-- Windows PowerShell, macOS, or Linux terminal
-
-### Installation
-
-```powershell
-git clone https://github.com/launchforgedev/RepoRamp.git
-cd RepoRamp
-
-python -m venv .venv
+```bash
+python -m pip install reporamp
 ```
 
-Activate the environment on Windows PowerShell:
+## Quick start
 
-```powershell
-.venv\Scripts\Activate.ps1
+Open a terminal in the Python project you want to analyze, then run:
+
+```bash
+cd path/to/your-project
+reporamp analyze .
 ```
 
-Install RepoRamp in editable mode:
+To choose an output location:
 
-```powershell
-pip install -e .
-```
-
-### Analyze a repository
-
-Display the available commands:
-
-```powershell
-reporamp --help
-```
-
-Analyze the current repository:
-
-```powershell
+```bash
 reporamp analyze . --output reporamp-report
 ```
 
-Analyze another repository:
+See all supported options:
 
-```powershell
-reporamp analyze "C:\path\to\your\project" --output reporamp-report
+```bash
+reporamp analyze --help
 ```
 
-## Generated Reports
+Check the installed version:
 
-RepoRamp generates two files in the selected output directory:
-
-- **`report.md`** — human-readable architecture analysis, dependencies, cycles, and quality findings.
-- **`report.json`** — structured analysis data suitable for scripts and other tools.
-
-Example JSON quality finding:
-
-```json
-{
-  "rule_id": "QR002",
-  "severity": "warning",
-  "message": "Module depends on 6 internal modules",
-  "module": "reporamp.cli",
-  "suggestion": "Review the module's responsibilities and consider splitting it into smaller modules"
-}
+```bash
+reporamp version
 ```
 
-The example illustrates the output format; actual findings depend on the repository being analyzed.
+RepoRamp generates Markdown and JSON architecture reports. Use the Markdown report for a quick overview and the JSON report for tooling or further analysis.
 
-## How It Works
+## Example report
 
-1. **Scan** — discover Python source files.
-2. **Parse** — use Python's AST to inspect source structure without running the source code.
-3. **Analyze** — resolve internal imports and build a dependency graph.
-4. **Evaluate** — apply the available quality rules.
-5. **Report** — export architecture information and findings to Markdown and JSON.
+An analysis report can include:
+
+- Number of Python modules analyzed
+- Internal dependency count
+- Standard-library and third-party imports
+- Unresolved imports
+- Dependency cycles
+- Module imports, classes, and functions
+- Code-quality findings and suggestions
+
+## Quality rules
+
+| Rule | What it checks |
+| --- | --- |
+| `QR001` | Empty Python modules |
+| `QR002` | Modules with more outgoing internal dependencies than the configured threshold |
+| `QR003` | Circular dependencies in the module graph |
+
+These checks are structural signals to help guide code review; they do not replace tests, linting, or human judgment.
 
 ## Development
 
-Clone the repository and install it in a virtual environment as described above.
+Clone the repository and install the project in editable mode with its development dependencies:
 
-Run the test suite:
+```bash
+git clone https://github.com/launchforgedev/Repo-Ramp.git
+cd Repo-Ramp
+python -m pip install -e ".[dev]"
+```
 
-```powershell
+Run the tests:
+
+```bash
 pytest
 ```
 
-Run an analysis against the repository itself:
+## Current scope
 
-```powershell
-reporamp analyze . --output test-report
-```
+RepoRamp currently focuses on static structural analysis of Python projects. AI-powered analysis is not part of the current release.
 
-Contributions and bug reports are welcome through the repository's GitHub page.
+## Contributing
 
-## Roadmap
-
-Potential future improvements include additional quality rules, richer architecture visualizations, configurable rule thresholds, and optional AI-assisted explanations.
+Issues, bug reports, and pull requests are welcome. Please include a clear description of the change and tests for new behavior where practical.
 
 ## License
 
-RepoRamp is licensed under the Apache License 2.0. See [LICENSE](LICENSE) for details.
+RepoRamp is released under the MIT License. See [LICENSE](LICENSE).
 
----
+## Links
 
-<div align="center">
-
-**Built for developers who want to understand their codebases better.**
-
-</div>
+- [PyPI package](https://pypi.org/project/reporamp/)
+- [GitHub repository](https://github.com/launchforgedev/Repo-Ramp)

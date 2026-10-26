@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "reporamp"
-version = "0.1.0"
+version = "0.1.1"
 description = "A developer tool for understanding Python codebases"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -13,6 +13,11 @@ license = "MIT"
 dependencies = [
      "typer>=0.12,<1.0",
 ]
+[project.urls]
+Homepage = "https://github.com/launchforgedev/Repo-Ramp"
+Repository = "https://github.com/launchforgedev/Repo-Ramp"
+Issues = "https://github.com/launchforgedev/Repo-Ramp/issues"
+PyPI = "https://pypi.org/project/reporamp/"
 
 [project.scripts]
 reporamp = "reporamp.cli:app"
