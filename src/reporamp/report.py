@@ -28,6 +28,63 @@ def _classify_unresolved_imports(
 
     return categories
 
+MAX_GRAPH_NODES = 60
+
+
+def _render_mermaid(
+    graph: DependencyGraph,
+    cycles: tuple[tuple[str, ...], ...],
+    max_nodes: int = MAX_GRAPH_NODES,
+) -> list[str]:
+    """Render internal edges as a Mermaid flowchart with cycle edges in red."""
+    degree: dict[str, int] = {}
+    for edge in graph.edges:
+        degree[edge.source] = degree.get(edge.source, 0) + 1
+        degree[edge.target] = degree.get(edge.target, 0) + 1
+
+    # Keep the most connected modules when the graph is too large to read.
+    kept = sorted(degree, key=lambda module: (-degree[module], module))[:max_nodes]
+    node_ids = {module: f"n{index}" for index, module in enumerate(sorted(kept))}
+
+    cycle_edges = {
+        (cycle[index], cycle[(index + 1) % len(cycle)])
+        for cycle in cycles
+        for index in range(len(cycle))
+    }
+
+    lines = ["```mermaid", "flowchart LR"]
+    lines.extend(f'    {node_id}["{module}"]' for module, node_id in node_ids.items())
+
+    highlighted = []
+    edges = [
+        edge
+        for edge in graph.edges
+        if edge.source in node_ids and edge.target in node_ids
+    ]
+    for index, edge in enumerate(edges):
+        lines.append(f"    {node_ids[edge.source]} --> {node_ids[edge.target]}")
+        if (edge.source, edge.target) in cycle_edges:
+            highlighted.append(str(index))
+
+    if highlighted:
+        lines.append(
+            f"    linkStyle {','.join(highlighted)} stroke:#d62728,stroke-width:2px"
+        )
+
+    lines.append("```")
+
+    if len(degree) > max_nodes:
+        lines.extend(
+            [
+                "",
+                f"_Graph truncated: showing {max_nodes} of {len(degree)} connected "
+                "modules (most connected first)._",
+            ]
+        )
+
+    return lines
+
+
 def _display_path(path: Path, root: Path | None = None) -> str:
     """Return a repository-relative path when the root is provided."""
     if root is not None:
@@ -132,6 +189,15 @@ def render_markdown(
     if graph.edges:
         for edge in graph.edges:
             lines.append(f"- `{edge.source}` → `{edge.target}`")
+    else:
+        lines.append("- None detected")
+
+    lines.extend(["", "## Dependency Graph", ""])
+
+    if graph.edges:
+        lines.append("Edges that are part of a dependency cycle are shown in red.")
+        lines.append("")
+        lines.extend(_render_mermaid(graph, find_dependency_cycles(graph)))
     else:
         lines.append("- None detected")
 
