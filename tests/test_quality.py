@@ -10,6 +10,9 @@ from reporamp.quality import (
     find_cycle_findings,
     find_empty_modules,
     find_high_dependency_modules,
+    find_high_fan_in_modules,
+    find_orphan_modules,
+    find_oversized_code,
     parse_rule_selection,
     select_findings,
 )
@@ -199,7 +202,7 @@ def test_analyze_quality_combines_findings(tmp_path: Path):
 
     rule_ids = {finding.rule_id for finding in findings}
 
-    assert rule_ids == {"QR001", "QR002", "QR003"}
+    assert rule_ids == {"QR001", "QR002", "QR003", "QR005"}
 
 
 def test_does_not_flag_empty_package_init(tmp_path: Path):
@@ -231,3 +234,72 @@ def test_select_findings_filters_by_rule():
     ]
 
     assert select_findings(findings, frozenset({"QR003"})) == [findings[1]]
+
+
+def test_detects_high_fan_in_module():
+    graph = DependencyGraph(
+        modules=("core", "a", "b", "c"),
+        edges=(
+            DependencyEdge("a", "core"),
+            DependencyEdge("b", "core"),
+            DependencyEdge("c", "core"),
+            DependencyEdge("a", "b"),
+        ),
+        unresolved_imports=(),
+    )
+
+    findings = find_high_fan_in_modules(graph, threshold=2)
+
+    assert [(f.rule_id, f.module) for f in findings] == [("QR004", "core")]
+    assert "imported by 3 internal modules" in findings[0].message
+    assert findings[0].suggestion
+    assert find_high_fan_in_modules(graph, threshold=3) == []
+
+
+def test_detects_orphan_modules_but_not_entry_points(tmp_path: Path):
+    graph = DependencyGraph(
+        modules=(
+            "app",
+            "app.__main__",
+            "app.cli",
+            "app.core",
+            "app.unused",
+            "conftest",
+            "tests.test_core",
+        ),
+        edges=(DependencyEdge("app.cli", "app.core"),),
+        unresolved_imports=(),
+    )
+    init_path = tmp_path / "__init__.py"
+
+    findings = find_orphan_modules(
+        {"app": init_path},
+        graph,
+        entry_points=frozenset({"app.cli"}),
+    )
+
+    assert [(f.rule_id, f.severity, f.module) for f in findings] == [
+        ("QR005", "info", "app.unused")
+    ]
+    assert findings[0].suggestion
+
+
+def test_detects_oversized_modules_and_functions(tmp_path: Path):
+    module_path = tmp_path / "big.py"
+    module_path.write_text(
+        "def small():\n    return 1\n\n\n"
+        "def large():\n    a = 1\n    b = 2\n    return a + b\n",
+        encoding="utf-8",
+    )
+
+    findings = find_oversized_code(
+        {"big": module_path},
+        max_module_lines=5,
+        max_function_lines=3,
+    )
+
+    assert [f.rule_id for f in findings] == ["QR006", "QR006"]
+    assert "8 lines (limit 5)" in findings[0].message
+    assert "`large` (line 5) has 4 lines (limit 3)" in findings[1].message
+    assert all(f.suggestion for f in findings)
+    assert find_oversized_code({"big": module_path}) == []
