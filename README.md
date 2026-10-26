@@ -170,6 +170,18 @@ An analysis report can include:
 - Module imports, classes, and functions
 - Code-quality findings and suggestions
 
+## AI architecture summary (optional)
+
+`reporamp analyze --ai` adds an "Architecture Summary" section to the Markdown report, written by Claude (`claude-opus-5-5`) through the Anthropic SDK:
+
+```bash
+python -m pip install "reporamp[ai]"
+export ANTHROPIC_API_KEY=...
+reporamp analyze . --ai
+```
+
+Only the structured analysis context is sent: repo-relative module paths, internal dependency edges, the unresolved-import count and dependency cycles. Source code is never sent. If `ANTHROPIC_API_KEY` is unset, the SDK is not installed, or the request fails, RepoRamp prints why and writes the built-in local summary instead. The run still succeeds.
+
 ## Comparing reports
 
 `reporamp diff` compares two JSON reports, for example from `main` and from a pull request branch:
@@ -229,7 +241,7 @@ pytest
 
 ## Current scope
 
-RepoRamp currently focuses on static structural analysis of Python projects. AI-powered analysis is not part of the current release.
+RepoRamp focuses on static structural analysis of Python projects. AI-powered summaries are optional and off by default (see [AI architecture summary](#ai-architecture-summary-optional)).
 
 ## Contributing
 
